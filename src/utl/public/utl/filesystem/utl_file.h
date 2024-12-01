@@ -2,9 +2,12 @@
 
 #pragma once
 
-#include "utl/filesystem/utl_permissions.h"
+#include "utl/filesystem/utl_file_error.h"
+#include "utl/filesystem/utl_file_status.h"
+#include "utl/filesystem/utl_file_type.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/memory/utl_allocator.h"
+#include "utl/string/utl_basic_short_string.h"
 #include "utl/string/utl_basic_string_view.h"
 #include "utl/string/utl_is_string_char.h"
 #include "utl/string/utl_libc.h"
@@ -14,94 +17,65 @@
 
 __UFS_NAMESPACE_BEGIN
 
-enum class file_type : unsigned char {
-    block_device,
-    character_device,
-    directory,
-    fifo,
-    link,
-    regular,
-    socket,
-    other,
-    invalid,
-    COUNT = invalid
-};
-
-template <file_type, typename Alloc>
-class basic_explicit_file;
-
 template <typename Alloc = __UTL allocator<path_char>>
 class UTL_PUBLIC_TEMPLATE basic_file {
     using allocator_type = Alloc;
-    using alloc_traits = __UTL allocator_traits<allocator_type>;
-    using pointer = typename alloc_traits::pointer;
+    using path_container = basic_string<path_char, allocator_type>;
     template <file_type Type>
     using explicit_file = basic_explicit_file<Type, allocator_type>;
     using view_type = basic_string_view<path_char>;
 
+    template <typename T UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))>
+    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))
+    __UTL_HIDE_FROM_ABI static inline constexpr auto get_path(T&& t) noexcept
+        -> decltype(__UTL forward_like<T>(__UTL declval<path_container&>())) {
+        return __UTL forward_like<T>(((copy_cv_t<remove_reference_t<T>, basic_file>&)t).path_);
+    }
+
 public:
-    __UTL_HIDE_FROM_ABI inline constexpr basic_file() noexcept(
-        UTL_TRAIT_is_nothrow_default_constructible(allocator_type)) = default;
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file const& other)
-        : data_{other.metadata_ref(), details::compressed_pair::value_initialize} {
-        copy_path(other);
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file const& other) {
-        if (this != __UTL addressof(other)) {
-            destroy();
-            metadata_ref() = other.metadata_ref();
-            alloc_traits::assign(alloc_ref(), other.alloc_ref());
-            copy_path(other);
-        }
-
-        return *this;
-    }
-
+    __UTL_HIDE_FROM_ABI inline basic_file() = delete;
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file const& other) = default;
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file const& other) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file&& other) noexcept(
-        (alloc_traits::propagate_on_container_move_assignment::value &&
-            alloc_traits::is_always_equal::value) ||
-        !utl::with_exceptions) {
-        using can_move_t =
-            conjunction<typename alloc_traits::propagate_on_container_move_assignment,
-                typename alloc_traits::is_always_equal>;
+        UTL_TRAIT_is_nothrow_move_assignable(path_container)) = default;
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file() noexcept = default;
 
-        move_assign(other, can_move_t());
-        return *this;
-    }
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other) noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_container)) = default;
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(
-        basic_file const& other, allocator_type const& a)
-        : data_{other.metadata_ref(), a} {
-        copy_path(other);
-    }
+        basic_file const& other, allocator_type const& a) UTL_THROWS
+        : path_{other.path_, a} {}
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other) noexcept
-        : data_{__UTL exchange(other.metadata_ref(), details::file_data{}),
-              details::compressed_pair::value_initialize}
-        , path_(__UTL exchange(other.path_, decltype(other.path_){})) {}
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other,
+        allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(path_container,
+        path_container, allocator_type const&))
+        : path_{__UTL move(other.path_), a} {}
 
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(path_container&& path) noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_container))
+        : path_{__UTL move(path)} {}
+
+    template <UTL_CONCEPT_CXX20(convertible_to<view_type>)... Vs UTL_CONSTRAINT_CXX11(
+        UTL_TRAIT_conjunction(
+            bool_constant<(sizeof...(Vs) > 0)>, is_convertible<Vs, view_type>...))>
+    UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(
-        basic_file&& other, allocator_type const& a) noexcept(alloc_traits::is_always_equal::value)
-        : data_{details::compressed_pair::default_initialize, a} {
-        static constexpr alloc_traits::is_always_equal overload{};
-        on_move_construct_with_alloc(other, overload);
-    }
+        explicit_file<file_type::directory>&& dir, Vs&&... tail)
+        : path_{__UFS path::join(get_path(__UTL move(dir)), __UTL forward<Vs>(tail)...)} {}
 
     __UTL_HIDE_FROM_ABI
-    explicit inline UTL_CONSTEXPR_CXX14 basic_file(allocator_type const& alloc) noexcept
-        : data_{details::compressed_pair::value_initialize, alloc} {}
+    explicit inline UTL_CONSTEXPR_CXX14 basic_file(allocator_type const& alloc) noexcept(
+        UTL_TRAIT_is_nothrow_constructible(path_container, allocator_type const&))
+        : path_{alloc} {}
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
         view_type view, allocator_type const& a = allocator_type{}) UTL_THROWS
-        : data_{view, a} {
-        initialize_path(view);
-    }
+        : path_{view, a} {}
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
         path_char const* path, allocator_type const& a = allocator_type{}) UTL_THROWS
-        : basic_file(view_type(path), a) {}
+        : basic_file{view_type(path), a} {}
 
 #if UTL_SUPPORTS_CHAR8_T
     template <UTL_CONCEPT_CXX20(string_char) Char UTL_CONSTRAINT_CXX11(
@@ -109,188 +83,58 @@ public:
     UTL_CONSTRAINT_CXX20(sizeof(Char) == sizeof(path_char))
     __UTL_HIDE_FROM_ABI explicit inline basic_file(
         Char const* bytes, allocator_type const& a = allocator_type{}) UTL_THROWS
-        : basic_file(view_type(reinterpret_cast<path_char*>(bytes)), a) {}
+        : basic_file{view_type(reinterpret_cast<path_char*>(bytes)), a} {}
 #endif
 
     __UTL_HIDE_FROM_ABI inline constexpr view_type path() const noexcept {
-        return basic_string_view<path_char>{path_str(), path_size()};
+        return view_type{path_.data(), path_.size()};
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator view_type() const noexcept {
+        return view_type{path_.data(), path_.size()};
     }
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type basename() const noexcept {
-        auto path_view = path();
-        return path_view.substr(path_view.find_last_of(u8'/') + 1);
+        return __UFS path::basename(path());
     }
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type basename(
         view_type suffix_to_remove) const noexcept {
-        auto name = basename();
-        if (suffix_to_remove.size() == name.size()) {
-            return name;
-        }
-
-        return remove_suffix(name, name.ends_with(suffix_to_remove) * suffix_to_remove.size());
+        return __UFS path::basename(path(), suffix_to_remove);
     }
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type extension() const noexcept {
-        auto name = basename();
-        return remove_prefix(name, add_sat(name.find_last_of(u8'.'), 1));
+        return __UFS path::extension(path());
     }
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_string_view<path_char> dirname() const noexcept {
-        auto path_view = path();
-        return path_view.substr(0, path_view.find_last_of(u8'/'));
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type dirname() const noexcept {
+        return __UFS path::dirname(path());
     }
-    __UTL_HIDE_FROM_ABI inline constexpr bool exists() const noexcept {
-        return metadata().exists > 0;
-    }
-    __UTL_HIDE_FROM_ABI inline constexpr size_t size() const noexcept {
-        return metadata().file_size;
-    }
-    __UTL_HIDE_FROM_ABI inline constexpr size_t hard_links() const noexcept {
-        return metadata().hard_links;
-    }
-    __UTL_HIDE_FROM_ABI inline constexpr perms permissions() const noexcept {
-        return metadata().perimissions;
-    }
-    __UTL_HIDE_FROM_ABI inline constexpr file_type type() const noexcept { return metadata().type; }
 
-    __UTL_HIDE_FROM_ABI inline void refresh_metadata() UTL_THROWS { populate(); }
+    __UTL_HIDE_FROM_ABI inline __UTL expected<file_status, file_error> status() const noexcept {
+        return __UFS details::stat(path());
+    }
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file() noexcept { destroy(); }
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_file<file_type::directory>
+    parent_directory() const& noexcept {
+        return explicit_file<file_type::directory>{dirname()};
+    }
+
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_file<file_type::directory>
+    parent_directory() && noexcept {
+        auto const dir = dirname();
+        if (path_.starts_with(dir)) {
+            return explicit_file<file_type::directory>{__UTL move(path_).substr(0, dir.size())};
+        }
+
+        // dir is "."
+        path_.clear();
+        path_ = dir;
+        return explicit_file<file_type::directory>{__UTL move(path_)};
+    }
 
 private:
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void destroy() noexcept {
-        if (path().size() >= inline_size) {
-            alloc_traits::deallocate(alloc_ref(), path_.dynamic, metadata_ref().path_size);
-            path_.dynamic = nullptr;
-            metadata_ref() = file_metadata{};
-        }
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr size_t path_size() const noexcept {
-        return metadata_ref().aux16;
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void set_path_size(uint16_t val) noexcept {
-        metadata_ref().aux16 = val;
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr path_char const* path_str() const noexcept {
-        return path_size() < inline_size ? path_.stack : path_.dynamic;
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void move_assign(basic_file& other, false_type)
-        UTL_THROWS {
-        *this = other;
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void move_assign(basic_file& other, true_type) noexcept {
-        destroy();
-        metadata_ref() = other.metadata_ref();
-        alloc_traits::assign(alloc_ref(), __UTL move(other.alloc_ref()));
-        path_ = __UTL exchange(other.path_, decltype(other.path_){});
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void on_move_construct_with_alloc(
-        basic_file& other, false_type) UTL_THROWS {
-        if (other.path_size() >= inline_size &&
-            !alloc_traits::equals(alloc_ref(), other.alloc_ref())) {
-            metadata_ref() = other.metadata_ref();
-            copy_path(other);
-        } else {
-            static constexpr false_type equals{};
-            on_move_construct_with_alloc(other, pos, count, equals);
-        }
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void on_move_construct_with_alloc(
-        basic_file& other, true_type) noexcept {
-        static constexpr details::file_data default_data{};
-        metadata_ref() = __UTL exchange(other.metadata_ref(), default_data);
-        if (other.path_size() == 0) {
-            path_.dynamic = nullptr;
-            return;
-        }
-
-        if (other.path_size() < inline_size) {
-            ::new (__UTL addressof(path_.stack)) decltype(path_.stack);
-            __UTL libc::memcpy(path_.stack, other.path_str(), other.path_size() + 1);
-        } else {
-            path_.dynamic = __UTL exchange(other.path_.dynamic, nullptr);
-        }
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr bool populated() const noexcept {
-        return metadata_ref().valid();
-    }
-
-    __UTL_HIDE_FROM_ABI void populate() const;
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void copy_path(basic_file const& other) {
-        if (other.path_size() == 0) {
-            path_.dynamic = nullptr;
-            return;
-        }
-
-        if (other.path_size() < inline_size) {
-            ::new (__UTL addressof(path_.stack)) decltype(path_.stack);
-            __UTL libc::memcpy(path_.stack, other.path_str(), other.path_size() + 1);
-            return;
-        }
-
-        auto ptr = alloc_traits::allocate(alloc_ref(), other.path_size() + 1);
-        __UTL_MEMCPY(__UTL to_address(ptr), other.path_str(), other.path_size() + 1);
-        __UTL to_address(ptr)[path.size()] = 0;
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void initialize_path(view_type path) {
-        if (path.empty()) {
-            return;
-        }
-
-        auto const size = paths::effective_length(path) + 1;
-
-        if (size < inline_size) {
-            ::new (path_.stack) decltype(path_.stack);
-            paths::collapse(path, __UTL span<path_char>(path_.stack));
-        } else {
-            auto ptr = alloc_traits::allocate(alloc, size);
-            paths::collapse(path, __UTL span<path_char>(__UTL to_address(ptr), size));
-            path_.dynamic = std::move(ptr);
-        }
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 file_metadata const& metadata() const noexcept {
-        if (!populated()) {
-            populate();
-        }
-        return metadata_ref();
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr file_metadata const& metadata_ref() const noexcept {
-        return data_.first();
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 file_metadata& metadata_ref() noexcept {
-        return data_.first();
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr allocator_type const& alloc_ref() const noexcept {
-        return data_.second();
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 allocator_type& alloc_ref() noexcept {
-        return data_.second();
-    }
-
-    using data_type = compressed_pair<file_metadata, allocator_type>;
-    mutable data_type data_;
-    static constexpr size_t inline_size =
-        sizeof(file_metadata) == sizeof(data_type) ? 16 : sizeof(pointer);
-    union {
-        pointer dynamic;
-        path_char stack[inline_size];
-    } path_;
+    path_container path_;
 };
 
 __UFS_NAMESPACE_END

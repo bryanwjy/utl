@@ -6,6 +6,7 @@
 #include "utl/filesystem/utl_platform.h"
 #include "utl/memory/utl_allocator.h"
 #include "utl/memory/utl_allocator_traits.h"
+#include "utl/numeric/utl_add_sat.h"
 #include "utl/string/utl_basic_string_view.h"
 #include "utl/string/utl_libc.h"
 
@@ -22,28 +23,42 @@ struct __UTL_ABI_PUBLIC relative_t {
 UTL_INLINE_CXX17 constexpr absolute_t absolute{};
 UTL_INLINE_CXX17 constexpr relative_t relative{};
 
-namespace paths {
+namespace path {
 
 using size_type = unsigned short;
-
 namespace details {
 
 template <typename Char>
-struct utils {
+struct constants {
     using view_type = basic_string_view<Char>;
     using pointer = Char*;
-
     static constexpr Char slash = (Char)'/';
     static constexpr view_type dot = literal_sequence<Char, (Char)'.'>::value;
     static constexpr view_type back = literal_sequence<Char, (Char)'.', (Char)'.'>::value;
 #if UTL_TARGET_MICROSOFT
+    static constexpr Char back_slash = (Char)'\\';
+    static constexpr Char colon = (Char)':';
     static constexpr view_type drive_delimiter_forward =
         literal_sequence<Char, (Char)':', (Char)'/'>::value;
     static constexpr view_type drive_delimiter_back =
         literal_sequence<Char, (Char)':', (Char)'\\'>::value;
-    static constexpr Char back_slash = (Char)'\\';
     static constexpr view_type delimiters = literal_sequence<(Char)'\\', (Char)'/'>::value;
-    static constexpr Char colon = (Char)':';
+#endif
+};
+
+template <typename Char>
+struct utils : __UFS constants<Char> {
+    using typename constants<Char>::view_type;
+    using typename constants<Char>::pointer;
+    using utils<Char>::slash;
+    using utils<Char>::back;
+    using utils<Char>::dot;
+#if UTL_TARGET_MICROSOFT
+    using utils<Char>::drive_delimiter_forward;
+    using utils<Char>::drive_delimiter_back;
+    using utils<Char>::back_slash;
+    using utils<Char>::delimiters;
+    using utils<Char>::colon;
 #endif
 
     struct split_components {
@@ -216,8 +231,8 @@ struct utils {
 
 template <typename, typename Char = path_char>
 class collapse_t;
+
 /**
- *
  * Demo: https://godbolt.org/z/4E39193oK
  */
 template <typename Char>
@@ -459,14 +474,19 @@ private:
 
 template <typename Char = path_char>
 __UTL_HIDE_FROM_ABI inline constexpr bool is_absolute(__UTL basic_string_view<Char> view) noexcept {
-    using utils_type = details::utils<Char>;
+    using traits_type = details::constants<Char>;
 #if UTL_TARGET_MICROSOFT
-    auto const prefix = abs_path.substr(0, 3);
-    return prefix.front() == utils_type::slash || prefix.front() == utils_type::back_slash ||
-        prefix.ends_with(utils_type::drive_delimiter_back) ||
-        prefix.ends_with(utils_type::drive_delimiter_forward);
+    if (view.empty()) {
+        return false;
+    }
+
+    // Microsoft only supports single character drives
+    auto const prefix = view.substr(0, 3);
+    return prefix.front() == traits_type::slash || prefix.front() == traits_type::back_slash ||
+        prefix.ends_with(traits_type::drive_delimiter_back) ||
+        prefix.ends_with(traits_type::drive_delimiter_forward);
 #else
-    return abs_path.front() == utils_type::slash;
+    return !view.empty() && view.front() == traits_type::slash;
 #endif
 }
 
@@ -519,6 +539,72 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline size_type effective_length(
     return details::collapse_t<relative_t>(view).length();
 }
 
+template <typename Char = path_char>
+UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> basename(
+    __UTL basic_string_view<Char> view) const noexcept {
+    using traits_type = details::constants<Char>;
+#if UTL_TARGET_MICROSOFT
+    view = remove_suffix(view, !view.empty() && traits_type::delimiters.contains(view.back()));
+    // if no delimiter, argument will wrap around to zero, so 'view' will be returned
+    return view.substr(view.find_last_of(traits_type::delimiters) + 1);
+#else
+    view = remove_suffix(view, view.ends_with(traits_type::slash));
+    return view.substr(view.find_last_of(traits_type::slash) + 1);
+#endif
+}
+
+template <typename Char = path_char>
+UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> basename(
+    __UTL basic_string_view<Char> path, __UTL basic_string_view<Char> suffix) const noexcept {
+    using traits_type = details::constants<Char>;
+    auto const name = basename(path);
+    if (suffix.size() == name.size()) {
+        // Quirk of the `basename` operation
+        // if suffix is equal to the basename, nothing is removed
+        return name;
+    }
+
+    return remove_suffix(name, name.ends_with(suffix) * suffix.size());
+}
+
+template <typename Char = path_char>
+__UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> extension(
+    __UTL basic_string_view<Char> path) const noexcept {
+    auto const name = basename(path);
+    return remove_prefix(name, add_sat(name.find_last_of((Char)'.'), 1));
+}
+
+template <typename Char = path_char>
+__UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> dirname(
+    __UTL basic_string_view<Char> path) const noexcept {
+    using view_type = __UTL basic_string_view<Char>;
+    using traits_type = details::constants<Char>;
+    // if relative and result is empty return dot
+    // if absolute and result is empty return root
+    auto const abs = is_absolute(path);
+    if (!abs && path.empty()) {
+        return traits_type::dot;
+    }
+
+#if UTL_TARGET_MICROSOFT
+    // absolute path cannot be empty
+    auto trimmed = remove_suffix(path, traits_type::delimiters.contains(path.back()));
+    if (trimmed.empty() || trimmed.ends_with(traits_type::colon)) {
+        return abs ? path : traits_type::dot;
+    }
+
+    return trimmed.substr(0, trimmed.find_last_of(traits_type::delimiters));
+#else
+    auto trimmed = remove_suffix(path, path.ends_with(traits_type::slash));
+    if (trimmed.empty()) {
+        return abs ? path : traits_type::dot;
+    }
+
+    return trimmed.substr(0, trimmed.find_last_of(traits_type::delimiters));
+#endif
+}
+
+// TODO
 template <typename Char = path_char, UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>) V,
     UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>)... Vs UTL_CONSTRAINT_CXX11(
     UTL_TRAIT_conjunction(
@@ -536,17 +622,18 @@ template <typename Char = path_char, UTL_CONCEPT_CXX20(allocator_type) Alloc,
             is_convertible<Vs, basic_string_view<Char>>...))>
 UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
 __UTL_HIDE_FROM_ABI inline basic_string<Char, Alloc> join(
-    Alloc const& alloc, V&& root, Vs&&... args) noexcept;
+    basic_string<Char, Alloc>&& root, Vs&&... args) noexcept;
 
-template <typename Char = path_char, UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>) V,
+template <typename Char = path_char,
+    UTL_CONCEPT_CXX20(allocator_type) Alloc = __UTL allocator<Char>,
+    UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>) V,
     UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>)... Vs UTL_CONSTRAINT_CXX11(
-    UTL_TRAIT_conjunction(
-        bool_constant<(sizeof...(Vs) > 0)>, is_convertible<V, basic_string_view<Char>>,
-        is_convertible<Vs, basic_string_view<Char>>...))>
+        UTL_TRAIT_conjunction(
+            bool_constant<(sizeof...(Vs) > 0)>, is_convertible<V, basic_string_view<Char>>,
+            is_convertible<Vs, basic_string_view<Char>>...))>
 UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
-__UTL_HIDE_FROM_ABI inline basic_string<Char, __UTL allocator<Char>> join(
-    V&& root, Vs&&... args) noexcept;
+__UTL_HIDE_FROM_ABI inline basic_string<Char, Alloc> join(V&& root, Vs&&... args) noexcept;
 
-} // namespace paths
+} // namespace path
 
 __UFS_NAMESPACE_END
