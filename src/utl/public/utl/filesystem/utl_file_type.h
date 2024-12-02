@@ -14,7 +14,6 @@ enum class file_type : unsigned char {
     symlink,
     regular,
     socket,
-    junction,
     other,
     invalid,
     COUNT = invalid

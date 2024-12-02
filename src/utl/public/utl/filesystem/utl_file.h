@@ -35,13 +35,12 @@ class UTL_PUBLIC_TEMPLATE basic_file {
 public:
     __UTL_HIDE_FROM_ABI inline basic_file() = delete;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file const& other) = default;
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other) noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_container)) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file const& other) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file&& other) noexcept(
         UTL_TRAIT_is_nothrow_move_assignable(path_container)) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file() noexcept = default;
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other) noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(path_container)) = default;
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(
         basic_file const& other, allocator_type const& a) UTL_THROWS
@@ -52,7 +51,7 @@ public:
         path_container, allocator_type const&))
         : path_{__UTL move(other.path_), a} {}
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(path_container&& path) noexcept(
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(path_container&& path) noexcept(
         UTL_TRAIT_is_nothrow_move_constructible(path_container))
         : path_{__UTL move(path)} {}
 
@@ -60,14 +59,9 @@ public:
         UTL_TRAIT_conjunction(
             bool_constant<(sizeof...(Vs) > 0)>, is_convertible<Vs, view_type>...))>
     UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
         explicit_file<file_type::directory>&& dir, Vs&&... tail)
         : path_{__UFS path::join(get_path(__UTL move(dir)), __UTL forward<Vs>(tail)...)} {}
-
-    __UTL_HIDE_FROM_ABI
-    explicit inline UTL_CONSTEXPR_CXX14 basic_file(allocator_type const& alloc) noexcept(
-        UTL_TRAIT_is_nothrow_constructible(path_container, allocator_type const&))
-        : path_{alloc} {}
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
         view_type view, allocator_type const& a = allocator_type{}) UTL_THROWS
@@ -87,10 +81,6 @@ public:
 #endif
 
     __UTL_HIDE_FROM_ABI inline constexpr view_type path() const noexcept {
-        return view_type{path_.data(), path_.size()};
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator view_type() const noexcept {
         return view_type{path_.data(), path_.size()};
     }
 

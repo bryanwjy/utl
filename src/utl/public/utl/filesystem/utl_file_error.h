@@ -6,7 +6,7 @@
 
 __UFS_NAMESPACE_BEGIN
 
-class file_error {
+class __UTL_ABI_PUBLIC file_error {
 #if UTL_TARGET_MICROSOFT
     using value_type = unsigned long;
 #else
