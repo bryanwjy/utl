@@ -3,6 +3,7 @@
 #pragma once
 
 #include "utl/filesystem/utl_platform.h"
+#include "utl/filesystem/utl_result.h"
 
 __UFS_NAMESPACE_BEGIN
 
@@ -21,6 +22,17 @@ public:
         : base_type{__UTL move(path)}
         , status_{status}
         , time_{time} {}
+    __UTL_HIDE_FROM_ABI inline basic_file_snapshot(base_type&& file, file_status const& status,
+        time_type time) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type, path_container))
+        : base_type{__UTL move(file)}
+        , status_{status}
+        , time_{time} {}
+    __UTL_HIDE_FROM_ABI inline basic_file_snapshot(base_type const& file, file_status const& status,
+        time_type time) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type, path_container))
+        : base_type{__UTL move(file)}
+        , status_{status}
+        , time_{time} {}
+
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(basic_file_snapshot const&) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(basic_file_snapshot&&) noexcept(
         UTL_TRAIT_is_nothrow_move_constructible(base_type)) = default;
@@ -32,21 +44,20 @@ public:
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file_snapshot() noexcept = default;
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(
-        basic_file_snapshot const& other, allocator_type const& a)
+        basic_file_snapshot const& other, allocator_type const& a) UTL_THROWS
         : base_type{static_cast<base_type const&>(other), a}
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {}
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(basic_file_snapshot&& other,
-        allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type, base_type,
-        allocator_type const&))
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(
+        basic_file_snapshot&& other, allocator_type const& a) UTL_THROWS
         : base_type{static_cast<base_type&&>(other), a}
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {}
 
     template<typename... Args UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_constructible(base_type, Args...))>
     UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_constructible(base_type, Args...))
-    __UTL_HIDE_FROM_ABI explicit inline basic_file_snapshot(Args&&... args)
+    __UTL_HIDE_FROM_ABI explicit inline basic_file_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...},
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {}
@@ -66,9 +77,19 @@ public:
         return time_;
     }
 
+    __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
+        return base_type::status().and_then([this](file_status const& status) {
+            status_ = status;
+            time_ = get_time(file_clock);
+            return result<void>{};
+        });
+    }
+
 private:
     file_status status_;
     time_point<file_clock> time_;
 };
+
+using file_snapshot = basic_file_snapshot<>;
 
 __UFS_NAMESPACE_END

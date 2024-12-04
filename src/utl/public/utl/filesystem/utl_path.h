@@ -47,7 +47,7 @@ struct constants {
 };
 
 template <typename Char>
-struct utils : __UFS constants<Char> {
+struct utils : constants<Char> {
     using typename constants<Char>::view_type;
     using typename constants<Char>::pointer;
     using utils<Char>::slash;

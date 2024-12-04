@@ -6,6 +6,7 @@
 #include "utl/filesystem/utl_file_status.h"
 #include "utl/filesystem/utl_file_type.h"
 #include "utl/filesystem/utl_platform.h"
+#include "utl/filesystem/utl_result.h"
 #include "utl/memory/utl_allocator.h"
 #include "utl/string/utl_basic_short_string.h"
 #include "utl/string/utl_basic_string_view.h"
@@ -24,6 +25,9 @@ class UTL_PUBLIC_TEMPLATE basic_file {
     template <file_type Type>
     using explicit_file = basic_explicit_file<Type, allocator_type>;
     using view_type = basic_string_view<path_char>;
+    using snapshot = __UTL basic_file_snapshot<allocator_type>;
+    template <file_type Type>
+    using explicit_snapshot = __UTL basic_file_snapshot<allocator_type>;
 
     template <typename T UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))>
     UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))
@@ -84,23 +88,6 @@ public:
         return view_type{path_.data(), path_.size()};
     }
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type basename() const noexcept {
-        return __UFS path::basename(path());
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type basename(
-        view_type suffix_to_remove) const noexcept {
-        return __UFS path::basename(path(), suffix_to_remove);
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type extension() const noexcept {
-        return __UFS path::extension(path());
-    }
-
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 view_type dirname() const noexcept {
-        return __UFS path::dirname(path());
-    }
-
     __UTL_HIDE_FROM_ABI inline __UTL expected<file_status, file_error> status() const noexcept {
         return __UFS details::stat(path());
     }
@@ -123,8 +110,49 @@ public:
         return explicit_file<file_type::directory>{__UTL move(path_)};
     }
 
+    __UTL_HIDE_FROM_ABI result<snapshot> to_snapshot() const& {
+        return this->status().and_then([this](file_status const& status) {
+            return result<snapshot>{__UTL in_place, *this, status, get_time(file_clock)};
+        });
+    }
+
+    __UTL_HIDE_FROM_ABI result<snapshot> to_snapshot() && noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_container)) {
+        return this->status().and_then([&](file_status const& status) {
+            return result<snapshot>{
+                __UTL in_place, __UTL move(*this), status, get_time(file_clock)};
+        });
+    }
+
+    template <file_type Type>
+    __UTL_HIDE_FROM_ABI result<explicit_snapshot<Type>> to_snapshot() const& {
+        return this->status().and_then([this](file_status const& status) {
+            if (status.type == Type) {
+                return result<explicit_snapshot<Type>>{
+                    __UTL in_place, *this, status, get_time(file_clock)};
+            } else {
+                return details::make_type_error<explicit_snapshot<Type>>();
+            }
+        });
+    }
+
+    template <file_type Type>
+    __UTL_HIDE_FROM_ABI result<explicit_snapshot<Type>> to_snapshot() && noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_container)) {
+        return this->status().and_then([&](file_status const& status) {
+            if (status.type == Type) {
+                return result<explicit_snapshot<Type>>{
+                    __UTL in_place, __UTL move(*this), status, get_time(file_clock)};
+            } else {
+                return details::make_type_error<explicit_snapshot<Type>>();
+            }
+        });
+    }
+
 private:
     path_container path_;
 };
+
+using file = basic_file<>;
 
 __UFS_NAMESPACE_END
