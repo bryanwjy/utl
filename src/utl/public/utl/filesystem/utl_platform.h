@@ -47,7 +47,8 @@ using path_char = decltype(u8' ');
 
 struct __UTL_ABI_PUBLIC file_clock_t {
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_clock_t() noexcept = default;
-    __UTL_HIDE_FROM_ABI friend __UTL time_point<file_clock_t> get_time(file_clock_t) noexcept;
+    __UTL_HIDE_FROM_ABI friend __UTL tempus::time_point<file_clock_t> get_time(
+        file_clock_t) noexcept;
 };
 
 UTL_INLINE_CXX17 constexpr file_clock_t file_clock{};

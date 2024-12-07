@@ -162,7 +162,7 @@ public:
 
     __UTL_HIDE_FROM_ABI inline constexpr operator generic_snapshot_type() && noexcept(
         UTL_TRAIT_is_nothrow_constructible(generic_snapshot_type, generic_file_type,
-            file_status const&, time_point<file_clock_t> const&)) {
+            file_status const&, tempus::time_point<file_clock_t> const&)) {
         return generic_snapshot_type{static_cast<generic_file_type&&>(*this), status_, time_};
     }
 
@@ -172,7 +172,7 @@ public:
         return status_;
     }
 
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 time_point<file_clock_t>
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 tempus::time_point<file_clock_t>
     time() const noexcept {
         return time_;
     }
@@ -191,7 +191,7 @@ public:
 
 private:
     file_status status_;
-    time_point<file_clock_t> time_;
+    tempus::time_point<file_clock_t> time_;
 };
 
 using regular_file_snapshot = basic_explicit_file_snapshot<file_type::regular>;

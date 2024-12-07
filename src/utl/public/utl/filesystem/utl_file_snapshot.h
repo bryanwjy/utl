@@ -12,7 +12,7 @@ class UTL_PUBLIC_TEMPLATE basic_file_snapshot : private basic_file<Alloc> {
     using base_type = basic_file<Alloc>;
     using allocator_type = Alloc;
     using path_container = basic_string<path_char, Alloc>;
-    using time_type = time_point<file_clock_t>;
+    using time_type = tempus::time_point<file_clock_t>;
     using view_type = basic_string_view<path_char>;
 
 public:
@@ -72,7 +72,7 @@ public:
         return status_;
     }
 
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 time_point<file_clock>
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 tempus::time_point<file_clock>
     time() const noexcept {
         return time_;
     }
@@ -87,7 +87,7 @@ public:
 
 private:
     file_status status_;
-    time_point<file_clock> time_;
+    tempus::time_point<file_clock> time_;
 };
 
 using file_snapshot = basic_file_snapshot<>;
