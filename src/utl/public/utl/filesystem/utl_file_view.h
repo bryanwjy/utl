@@ -17,6 +17,9 @@
 
 __UFS_NAMESPACE_BEGIN
 
+template <file_type Type>
+class __UTL_PUBLIC_TEMPLATE explicit_file_view;
+
 class __UTL_ABI_PUBLIC file_view {
     template <file_type Type>
     using explicit_type = explicit_file_view<Type>;
@@ -122,12 +125,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline constexpr explicit_file_view(Args&&... args)
         : base_type{__UTL forward<Args>(args)...} {}
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const noexcept {
-        return *this;
-    }
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator base_type() const noexcept {
-        return *this;
-    }
+    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
 
     using base_type::parent_directory;
     using base_type::path;

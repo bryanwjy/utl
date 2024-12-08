@@ -43,12 +43,7 @@ public:
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {}
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const noexcept {
-        return *this;
-    }
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator base_type() const noexcept {
-        return *this;
-    }
+    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
 
     using base_type::path;
 
@@ -76,8 +71,6 @@ private:
 template <file_type Type>
 class __UTL_PUBLIC_TEMPLATE explicit_file_view_snapshot : private explicit_file_view<Type> {
     using base_type = explicit_file_view<Type>;
-    using generic_file_type = file_view;
-    using generic_snapshot_type = file_view_snapshot;
     using time_type = tempus::time_point<file_clock_t>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
@@ -92,7 +85,7 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline explicit_file_view_snapshot(
-        generic_file_type const& file, file_status const& status, time_type time) noexcept
+        file_view const& file, file_status const& status, time_type time) noexcept
         : base_type{file}
         , status_{status}
         , time_{time} {
@@ -119,8 +112,8 @@ public:
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~explicit_file_view_snapshot() noexcept = default;
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 explicit_file_view_snapshot(
-        generic_snapshot_type const& other) noexcept
-        : base_type{static_cast<generic_file_type>(other)}
+        file_view_snapshot const& other) noexcept
+        : base_type{static_cast<file_view>(other)}
         , status_{other.status()}
         , time_{other.time()} {
         UTL_ASSERT(status().type == Type);
@@ -153,29 +146,19 @@ public:
         : base_type{__UTL forward<Args>(args)...}
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {
-        UTL_THROWS_IF(status().type != Type,
+        UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
                 __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const noexcept {
-        return *this;
+    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept {
+        return static_cast<file_view>(static_cast<base_type const&>(*this));
     }
 
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator base_type() const noexcept {
-        return *this;
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator generic_file_type const&() const noexcept {
-        return *this;
-    }
-
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator generic_file_type() const noexcept {
-        return static_cast<generic_file_type>(static_cast<base_type const&>(*this));
-    }
-
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator generic_snapshot_type() const noexcept {
-        return generic_snapshot_type{static_cast<generic_file_type const&>(*this), status_, time_};
+    __UTL_HIDE_FROM_ABI inline constexpr operator file_view_snapshot() const noexcept {
+        return file_view_snapshot{static_cast<file_view const&>(*this), status_, time_};
     }
 
     using base_type::path;

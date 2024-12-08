@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include "utl/filesystem/utl_file.h"
 #include "utl/filesystem/utl_file_error.h"
 #include "utl/filesystem/utl_file_status.h"
 #include "utl/filesystem/utl_file_type.h"
+#include "utl/filesystem/utl_file_view.h"
 #include "utl/filesystem/utl_path.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/filesystem/utl_result.h"
@@ -13,7 +13,6 @@
 #include "utl/string/utl_basic_short_string.h"
 #include "utl/string/utl_basic_string_view.h"
 #include "utl/string/utl_is_string_char.h"
-#include "utl/string/utl_libc.h"
 #include "utl/system_error/utl_error_code.h"
 #include "utl/type_traits/utl_is_base_of.h"
 #include "utl/type_traits/utl_is_constructible.h"
@@ -90,6 +89,12 @@ public:
         view_type view, allocator_type const& a = allocator_type{}) UTL_THROWS
         : path_{view, a} {}
 
+    template <typename View UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_convertible(View, view_type))>
+    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_convertible(View, view_type))
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
+        View const& path, allocator_type const& a = allocator_type{}) UTL_THROWS
+        : path_{static_cast<view_type>(path), a} {}
+
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
         path_char const* path, allocator_type const& a = allocator_type{}) UTL_THROWS
         : basic_file{view_type(path), a} {}
@@ -101,9 +106,18 @@ public:
         Char const* bytes, allocator_type const& a = allocator_type{}) UTL_THROWS
         : basic_file{view_type(reinterpret_cast<path_char*>(bytes)), a} {}
 
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline constexpr view_type path() const UTL_ATTRIBUTE(
-        LIFETIMEBOUND) noexcept {
+    template <typename View UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_convertible(View, file_view))>
+    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_convertible(View, file_view))
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(
+        View const& other, allocator_type const& a = allocator_type{}) UTL_THROWS
+        : basic_file{static_cast<file_view>(other).path(), a} {}
+
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline constexpr view_type path() const noexcept UTL_LIFETIMEBOUND {
         return view_type{path_.data(), path_.size()};
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
+        return file_view{path()};
     }
 
     __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
@@ -205,14 +219,16 @@ public:
     operator=(basic_explicit_file&& other) noexcept(
         UTL_TRAIT_is_nothrow_move_assignable(base_type)) = default;
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_explicit_file(
-        basic_explicit_file const& other, allocator_type const& a) UTL_THROWS
-        : base_type(static_cast<base_type const&>(other), a) {}
-
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_explicit_file(basic_explicit_file&& other,
         allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type, base_type,
         allocator_type const&))
-        : base_type(static_cast<base_type&&>(other), a) {}
+        : base_type{static_cast<base_type&&>(other), a} {}
+
+    template <typename View UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_convertible(View, explicit_file_view<Type>))>
+    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_convertible(View, explicit_file_view<Type>))
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_explicit_file(
+        View const& other, allocator_type const& a = allocator_type{}) UTL_THROWS
+        : base_type{static_cast<explicit_file_view<Type>>(other).path(), a} {}
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_explicit_file() noexcept = default;
 
@@ -231,14 +247,20 @@ public:
         UTL_TRAIT_is_nothrow_constructible(base_type, Args...))
         : base_type{__UTL forward<Args>(args)...} {}
 
-    __UTL_HIDE_FROM_ABI inline constexpr
-    operator base_type const&() const& UTL_ATTRIBUTE(LIFETIMEBOUND) noexcept {
+    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const& noexcept UTL_LIFETIMEBOUND {
         return *this;
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type&&() &&
-        UTL_ATTRIBUTE(LIFETIMEBOUND) noexcept {
+    __UTL_HIDE_FROM_ABI inline constexpr operator base_type&&() && noexcept UTL_LIFETIMEBOUND {
         return __UTL move(*this);
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator explicit_file_view<Type>() const noexcept UTL_LIFETIMEBOUND {
+        return explicit_file_view<Type>{path()};
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
+        return file_view{path()};
     }
 
     using base_type::parent_directory;
