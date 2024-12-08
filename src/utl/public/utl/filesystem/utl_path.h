@@ -28,8 +28,8 @@ UTL_INLINE_CXX17 constexpr relative_t relative{};
 namespace path {
 
 using size_type = unsigned short;
+// TODO cleanup
 namespace details {
-
 template <typename Char>
 struct constants {
     using view_type = basic_string_view<Char>;
@@ -90,9 +90,10 @@ struct utils : constants<Char> {
             : size{c.head.size(), 0} {}
 
         __UTL_HIDE_FROM_ABI inline bool perform_count(
-            view_type component, view_type& src_tail) noexcept {
+            view_type const component, view_type& src_tail) noexcept {
             //  if not end, include trailing slash
-            size.stem += component.size() + 1;
+            auto const comp_size = component.size() + !component.empty();
+            size.stem += comp_size;
         count_start:
             if (src_tail.empty()) {
                 return true;
@@ -108,7 +109,7 @@ struct utils : constants<Char> {
             }
 
             if (next == back) {
-                size.stem = sub_sat(size.stem, component.size() + 1);
+                size.stem = sub_sat(size.stem, comp_size);
                 return false;
             }
 
@@ -189,12 +190,13 @@ struct utils : constants<Char> {
             if (component.empty()) {
                 return;
             }
-
-            auto const total_size = component.size() + 1; // add slash
+            auto garbage = slash;
+            auto const total_size = component.size() + !component.empty(); // add slash
             if (dst + total_size < end) {
                 written += total_size;
                 __UTL libc::memcpy(dst, component.data(), component.size() * sizeof(Char));
-                *(dst + component.size()) = slash;
+                auto write_dst = !component.empty() ? dst + component.size() : &garbage;
+                *write_dst = slash;
             }
 
             dst += total_size;
@@ -294,7 +296,7 @@ private:
         // collapses any "." or ".." at the beginning of a relative path
         while (!rel_path.empty()) {
             auto const result = split_on_first_delimiter(rel_path);
-            if (result.head != dot && result.head != back) {
+            if (result.head != dot && result.head != back && !result.head.empty()) {
                 return result;
             }
             rel_path = result.tail;
@@ -413,12 +415,14 @@ private:
     }
 
     template <typename OnBack>
-    static inline split_components collapse_head(view_type rel_path, OnBack&& on_back) noexcept {
+    __UTL_HIDE_FROM_ABI static inline split_components collapse_head(
+        view_type rel_path, OnBack&& on_back) noexcept {
         while (!rel_path.empty()) {
             auto const result = split_on_first_delimiter(rel_path);
             auto const is_dot = result.head == dot;
             auto const is_back = result.head == back;
-            if (!is_dot && !is_back) {
+            // empty check to skip empty component, i.e. ///
+            if (!is_dot && !is_back && !result.head.empty()) {
                 return result;
             }
 
