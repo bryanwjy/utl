@@ -12,6 +12,8 @@
 
 __UFS_NAMESPACE_BEGIN
 
+using path_view = __UTL basic_string_view<path_char>;
+
 struct __UTL_ABI_PUBLIC absolute_t {
     __UTL_HIDE_FROM_ABI explicit inline constexpr absolute_t() noexcept = default;
 };

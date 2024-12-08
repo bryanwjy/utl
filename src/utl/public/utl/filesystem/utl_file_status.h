@@ -4,6 +4,7 @@
 
 #include "utl/filesystem/utl_permissions.h"
 #include "utl/filesystem/utl_platform.h"
+#include "utl/filesystem/utl_result.h"
 #include "utl/tempus/utl_clock.h"
 
 __UFS_NAMESPACE_BEGIN
@@ -17,5 +18,7 @@ struct __UTL_ABI_PUBLIC file_status {
     perms perimissions = perms::invalid;
     file_type type = file_type::invalid;
 };
+
+__UTL_ABI_PUBLIC result<file_status> status(path_view view) noexcept;
 
 __UFS_NAMESPACE_END

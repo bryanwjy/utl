@@ -121,7 +121,7 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
-        return __UFS details::stat(path());
+        return __UFS status(path());
     }
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_file<file_type::directory>
