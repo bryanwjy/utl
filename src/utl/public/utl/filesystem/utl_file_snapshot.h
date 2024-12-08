@@ -2,18 +2,14 @@
 
 #pragma once
 
+#include "utl/exception/utl_system_exception.h"
 #include "utl/filesystem/utl_file.h"
-#include "utl/filesystem/utl_file_error.h"
-#include "utl/filesystem/utl_file_status.h"
-#include "utl/filesystem/utl_file_type.h"
-#include "utl/filesystem/utl_platform.h"
-#include "utl/filesystem/utl_result.h"
 #include "utl/utility/utl_to_underlying.h"
 
 __UFS_NAMESPACE_BEGIN
 
 template <typename Alloc = __UTL allocator<path_char>>
-class UTL_PUBLIC_TEMPLATE basic_file_snapshot : private basic_file<Alloc> {
+class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : private basic_file<Alloc> {
     using base_type = basic_file<Alloc>;
     using allocator_type = Alloc;
     using path_container = basic_string<path_char, Alloc>;
@@ -96,7 +92,8 @@ private:
 };
 
 template <file_type Type, typename Alloc = __UTL allocator<path_char>>
-class UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot : private basic_explicit_file<Type, Alloc> {
+class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot :
+    private basic_explicit_file<Type, Alloc> {
     using allocator_type = Alloc;
     using base_type = basic_explicit_file<Type, allocator_type>;
     using generic_file_type = basic_file<allocator_type>;
@@ -158,27 +155,27 @@ public:
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_explicit_file_snapshot(
         generic_snapshot_type const& other) UTL_THROWS
-        : base_type{static_cast<basic_file<allocator_type> const&>(other)}
-        , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        : base_type{static_cast<generic_file_type const&>(other)}
+        , status_{other.status()}
+        , time_{other.time()} {
         // assert because it is possible and cheap to check before constructing
         UTL_ASSERT(status().type == Type);
     }
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_explicit_file_snapshot(
         generic_snapshot_type&& other) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type,
-        basic_file_snapshot<allocator_type>))
-        : base_type{static_cast<basic_file<allocator_type>&&>(other)}
-        , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        generic_file_type))
+        : base_type{static_cast<generic_file_type&&>(__UTL move(other))}
+        , status_{other.status()} // TODO ignore access moved data warning
+        , time_{other.time()} {
         UTL_ASSERT(status().type == Type);
     }
 
     __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_explicit_file_snapshot(
         generic_snapshot_type const& other, allocator_type const& a) UTL_THROWS
-        : base_type{static_cast<basic_file<allocator_type> const&>(other), a}
-        , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        : base_type{static_cast<generic_file_type const&>(other), a}
+        , status_{other.status()}
+        , time_{other.time()} {
         UTL_ASSERT(status().type == Type);
     }
 
@@ -186,9 +183,9 @@ public:
         generic_snapshot_type&& other,
         allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(base_type,
         generic_snapshot_type, allocator_type const&))
-        : base_type{static_cast<basic_file<allocator_type>&&>(other), a}
-        , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        : base_type{static_cast<generic_file_type&&>(__UTL move(other)), a}
+        , status_{other.status()}
+        , time_{other.time()} {
         UTL_ASSERT(status().type == Type);
     }
 
@@ -212,15 +209,15 @@ public:
     basic_explicit_file_snapshot(basic_explicit_file_snapshot<U>&&, allocator_type const&) = delete;
 
     template <typename... Args UTL_CONSTRAINT_CXX11(
-        UTL_TRAIT_is_constructible(base_type, Args...) &&
-        UTL_TRAIT_is_explicit_constructible(base_type, Args...))>
+        UTL_TRAIT_is_constructible(base_type, Args...))>
     UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_constructible(base_type, Args...))
     __UTL_HIDE_FROM_ABI explicit inline basic_explicit_file_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...}
         , status_{base_type::status().value()}
         , time_{get_time(file_clock)} {
-        // TODO
-        UTL_THROWS_IF(status().type != Type, __UTL runtime_exception(""));
+        UTL_THROWS_IF(status().type != Type,
+            __UTL error_code_exception(
+                __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
     }
 
     __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const& noexcept {
@@ -261,14 +258,14 @@ public:
         return time_;
     }
 
-    __UTL_HIDE_FROM_ABI inline result<void> refresh_status() {
+    __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
         return base_type::status().and_then([this](file_status const& status) {
             if (status.type == Type) {
                 status_ = status;
                 time_ = get_time(file_clock);
                 return result<void>{};
             } else {
-                return details::make_type_error<void>();
+                return details::make_error<fs_errc::file_type_mismatch, void>();
             }
         });
     }

@@ -12,6 +12,8 @@
 
 extern "C" int getdirentries(int fd, char* buf, int nbytes, long* basep);
 
+using path_char = decltype(u8' ');
+
 #elif UTL_TARGET_LINUX
 
 #  include <errno.h>
@@ -21,8 +23,11 @@ extern "C" int getdirentries(int fd, char* buf, int nbytes, long* basep);
 #  include <sys/types.h>
 #  include <unistd.h>
 
+using path_char = decltype(u8' ');
+
 #elif UTL_TARGET_MICROSOFT
 
+using path_char = decltype(u8' ');
 // TODO
 
 #else
@@ -43,7 +48,6 @@ extern "C" int getdirentries(int fd, char* buf, int nbytes, long* basep);
 __UFS_NAMESPACE_BEGIN
 
 enum class file_type;
-using path_char = decltype(u8' ');
 
 struct __UTL_ABI_PUBLIC file_clock_t {
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_clock_t() noexcept = default;
