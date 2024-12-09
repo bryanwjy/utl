@@ -10,7 +10,7 @@ __UFS_NAMESPACE_BEGIN
 
 class __UTL_PUBLIC_TEMPLATE file_view_snapshot : private file_view {
     using base_type = file_view;
-    using time_type = tempus::time_point<file_clock_t>;
+    using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
 
 public:
@@ -41,7 +41,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline file_view_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...},
         , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {}
+        , time_{get_time(steady_clock)} {}
 
     __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
 
@@ -58,7 +58,7 @@ public:
     __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
         return base_type::status().and_then([this](file_status const& status) {
             status_ = status;
-            time_ = get_time(file_clock);
+            time_ = get_time(steady_clock);
             return result<void>{};
         });
     }
@@ -71,7 +71,7 @@ private:
 template <file_type Type>
 class __UTL_PUBLIC_TEMPLATE explicit_file_view_snapshot : private explicit_file_view<Type> {
     using base_type = explicit_file_view<Type>;
-    using time_type = tempus::time_point<file_clock_t>;
+    using time_type = tempus::time_point<steady_clock_t>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
 
@@ -145,7 +145,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline explicit_file_view_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...}
         , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        , time_{get_time(steady_clock)} {
         UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
                 __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
@@ -175,7 +175,7 @@ public:
         return base_type::status().and_then([this](file_status const& status) {
             if (status.type == Type) {
                 status_ = status;
-                time_ = get_time(file_clock);
+                time_ = get_time(steady_clock);
                 return result<void>{};
             } else {
                 return details::make_error<fs_errc::file_type_mismatch, void>();

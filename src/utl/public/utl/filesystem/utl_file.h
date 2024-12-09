@@ -143,7 +143,7 @@ public:
 
     __UTL_HIDE_FROM_ABI inline result<snapshot> to_snapshot() const& {
         return this->status().and_then([this](file_status const& status) {
-            return result<snapshot>{__UTL in_place, *this, status, get_time(file_clock)};
+            return result<snapshot>{__UTL in_place, *this, status, get_time(steady_clock)};
         });
     }
 
@@ -151,7 +151,7 @@ public:
         UTL_TRAIT_is_nothrow_move_constructible(path_container)) {
         return this->status().and_then([&](file_status const& status) {
             return result<snapshot>{
-                __UTL in_place, __UTL move(*this), status, get_time(file_clock)};
+                __UTL in_place, __UTL move(*this), status, get_time(steady_clock)};
         });
     }
 
@@ -175,7 +175,7 @@ public:
         return this->status().and_then([this](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
-                    __UTL in_place, *this, status, get_time(file_clock)};
+                    __UTL in_place, *this, status, get_time(steady_clock)};
             } else {
                 return details::make_error<fs_errc::file_type_mismatch, explicit_snapshot<Type>>();
             }
@@ -188,7 +188,7 @@ public:
         return this->status().and_then([&](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
-                    __UTL in_place, __UTL move(*this), status, get_time(file_clock)};
+                    __UTL in_place, __UTL move(*this), status, get_time(steady_clock)};
             } else {
                 return details::make_error<fs_errc::file_type_mismatch, explicit_snapshot<Type>>();
             }
@@ -274,7 +274,7 @@ public:
         return base_type::status().and_then([&](file_status const& stat) {
             if (stat.type == Type) {
                 return result<snapshot_type>{__UTL in_place, static_cast<base_type const&>(*this),
-                    stat, get_time(file_clock)};
+                    stat, get_time(steady_clock)};
             } else {
                 return details::make_error<fs_errc::file_type_mismatch, snapshot_type>();
             }
@@ -287,7 +287,7 @@ public:
         return base_type::status().and_then([&](file_status const& stat) {
             if (stat.type == Type) {
                 return result<snapshot_type>{
-                    __UTL in_place, static_cast<base_type&&>(*this), stat, get_time(file_clock)};
+                    __UTL in_place, static_cast<base_type&&>(*this), stat, get_time(steady_clock)};
             } else {
                 // It may be possible for file to change type, e.g. other process delete and
                 // recreate as different type

@@ -13,7 +13,7 @@ class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : private basic_file<Alloc> {
     using base_type = basic_file<Alloc>;
     using allocator_type = Alloc;
     using path_container = basic_string<path_char, Alloc>;
-    using time_type = tempus::time_point<file_clock_t>;
+    using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
 
 public:
@@ -98,6 +98,7 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot :
     using base_type = basic_explicit_file<Type, allocator_type>;
     using generic_file_type = basic_file<allocator_type>;
     using generic_snapshot_type = basic_file_snapshot<allocator_type>;
+    using time_type = tempus::time_point<steady_clock_t>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
 
@@ -261,8 +262,7 @@ public:
         return status_;
     }
 
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 tempus::time_point<file_clock_t>
-    time() const noexcept {
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 time_type time() const noexcept {
         return time_;
     }
 
@@ -280,7 +280,7 @@ public:
 
 private:
     file_status status_;
-    tempus::time_point<file_clock_t> time_;
+    time_type time_;
 };
 
 using file_snapshot = basic_file_snapshot<>;
