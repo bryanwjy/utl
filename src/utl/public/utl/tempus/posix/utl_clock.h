@@ -107,6 +107,26 @@ public:
     }
 };
 
+template <>
+struct __UTL_PUBLIC_TEMPLATE clock_traits<file_clock_t> : private clock_traits<system_clock_t> {
+private:
+    using base_type = clock_traits<system_clock_t>;
+
+public:
+    using clock = file_clock_t;
+    using typename base_type::duration_type;
+    using typename base_type::value_type;
+
+    using base_type::compare;
+    using base_type::difference;
+    using base_type::equal;
+    using base_type::time_since_epoch;
+
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) friend time_point<file_clock_t> get_time(file_clock_t) noexcept {
+        return time_point<file_clock_t>{get_time(system_clock).value()};
+    }
+};
+
 UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) constexpr ::time_t to_posix_time(
     time_point<system_clock_t> t) noexcept {
     using value_type = typename clock_traits<system_clock_t>::value_type;
@@ -146,31 +166,6 @@ public:
 };
 
 #  if !UTL_TARGET_APPLE
-
-template <>
-struct __UTL_PUBLIC_TEMPLATE clock_traits<file_clock_t> : private clock_traits<system_clock_t> {
-private:
-    using base_type = clock_traits<system_clock_t>;
-
-public:
-    using clock = file_clock_t;
-    using typename base_type::duration_type;
-    using typename base_type::value_type;
-
-    using base_type::compare;
-    using base_type::difference;
-    using base_type::equal;
-    using base_type::time_since_epoch;
-
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) friend time_point<file_clock_t> get_time(file_clock_t) noexcept {
-        return time_point<file_clock_t>{get_time(system_clock).value()};
-    }
-
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) static time_point<file_clock_t> construct(
-        value_type const& val) noexcept {
-        return time_point<file_clock_t>{val};
-    }
-};
 
 template <>
 struct __UTL_PUBLIC_TEMPLATE clock_traits<steady_clock_t> : private details::timespec_traits {
