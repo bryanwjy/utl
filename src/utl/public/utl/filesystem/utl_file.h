@@ -200,7 +200,7 @@ private:
 };
 
 template <file_type Type, typename Alloc>
-class __UTL_PUBLIC_TEMPLATE basic_explicit_file : private basic_file<Alloc> {
+class __UTL_PUBLIC_TEMPLATE basic_explicit_file : public basic_file<Alloc> {
     using allocator_type = Alloc;
     using base_type = basic_file<allocator_type>;
     using snapshot_type = __UTL basic_explicit_file_snapshot<Type, allocator_type>;
@@ -246,14 +246,6 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline constexpr basic_explicit_file(Args&&... args) noexcept(
         UTL_TRAIT_is_nothrow_constructible(base_type, Args...))
         : base_type{__UTL forward<Args>(args)...} {}
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const& noexcept UTL_LIFETIMEBOUND {
-        return *this;
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type&&() && noexcept UTL_LIFETIMEBOUND {
-        return __UTL move(*this);
-    }
 
     __UTL_HIDE_FROM_ABI inline constexpr operator explicit_file_view<Type>() const noexcept UTL_LIFETIMEBOUND {
         return explicit_file_view<Type>{path()};

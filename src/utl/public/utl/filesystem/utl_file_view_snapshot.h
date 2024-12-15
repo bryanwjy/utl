@@ -8,7 +8,7 @@
 
 __UFS_NAMESPACE_BEGIN
 
-class __UTL_PUBLIC_TEMPLATE file_view_snapshot : private file_view {
+class __UTL_ABI_PUBLIC file_view_snapshot : public file_view {
     using base_type = file_view;
     using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
@@ -43,8 +43,6 @@ public:
         , status_{base_type::status().value()}
         , time_{get_time(steady_clock)} {}
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
-
     using base_type::path;
 
     UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline UTL_CONSTEXPR_CXX14 file_status const& status() const noexcept {
@@ -69,7 +67,7 @@ private:
 };
 
 template <file_type Type>
-class __UTL_PUBLIC_TEMPLATE explicit_file_view_snapshot : private explicit_file_view<Type> {
+class __UTL_PUBLIC_TEMPLATE explicit_file_view_snapshot : public explicit_file_view<Type> {
     using base_type = explicit_file_view<Type>;
     using time_type = tempus::time_point<steady_clock_t>;
     static_assert(
@@ -151,13 +149,7 @@ public:
                 __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept {
-        return static_cast<file_view>(static_cast<base_type const&>(*this));
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator file_view_snapshot() const noexcept {
+    __UTL_HIDE_FROM_ABI explicit inline constexpr operator file_view_snapshot() const noexcept {
         return file_view_snapshot{static_cast<file_view const&>(*this), status_, time_};
     }
 

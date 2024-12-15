@@ -92,7 +92,7 @@ private:
 };
 
 template <file_type Type>
-class __UTL_PUBLIC_TEMPLATE explicit_file_view : private file_view {
+class __UTL_PUBLIC_TEMPLATE explicit_file_view : public file_view {
     using base_type = file_view;
     using snapshot_type = __UTL file_view_snapshot<Type>;
     static_assert(
@@ -124,8 +124,6 @@ public:
     UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_constructible(base_type, Args...))
     __UTL_HIDE_FROM_ABI explicit inline constexpr explicit_file_view(Args&&... args)
         : base_type{__UTL forward<Args>(args)...} {}
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type() const noexcept { return *this; }
 
     using base_type::parent_directory;
     using base_type::path;

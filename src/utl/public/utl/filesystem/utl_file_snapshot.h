@@ -9,7 +9,7 @@
 __UFS_NAMESPACE_BEGIN
 
 template <typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : private basic_file<Alloc> {
+class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : public basic_file<Alloc> {
     using base_type = basic_file<Alloc>;
     using allocator_type = Alloc;
     using path_container = basic_string<path_char, Alloc>;
@@ -51,15 +51,6 @@ public:
         basic_file_snapshot const& other, allocator_type const& a) UTL_THROWS
         : basic_file_snapshot{static_cast<base_type const&>(other), a} {}
 
-    __UTL_HIDE_FROM_ABI inline constexpr
-    operator base_type const&() const& UTL_LIFETIMEBOUND {
-        return *this;
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type&&() && UTL_LIFETIMEBOUND {
-        return __UTL move(*this);
-    }
-
     __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
         return file_view{path()};
     }
@@ -92,8 +83,7 @@ private:
 };
 
 template <file_type Type, typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot :
-    private basic_explicit_file<Type, Alloc> {
+class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot : public basic_explicit_file<Type, Alloc> {
     using allocator_type = Alloc;
     using base_type = basic_explicit_file<Type, allocator_type>;
     using generic_file_type = basic_file<allocator_type>;
@@ -213,47 +203,30 @@ public:
                 __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator file_view_snapshot() const noexcept UTL_LIFETIMEBOUND {
+    __UTL_HIDE_FROM_ABI explicit inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
+        return file_view{path()};
+    }
+
+    __UTL_HIDE_FROM_ABI explicit inline constexpr operator file_view_snapshot() const noexcept UTL_LIFETIMEBOUND {
         return file_view_snapshot{path(), status(), time()};
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator explicit_file_view_snapshot<Type>() const noexcept UTL_LIFETIMEBOUND {
-        return explicit_file_view_snapshot<Type>{path(), status(), time()};
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type const&() const& noexcept UTL_LIFETIMEBOUND {
-        return *this;
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator base_type&&() && noexcept UTL_LIFETIMEBOUND {
-        return __UTL move(*this);
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr
-    operator basic_file<allocator_type> const&() const& noexcept UTL_LIFETIMEBOUND {
-        return static_cast<base_type const&>(*this);
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator basic_file<allocator_type>&&() && noexcept UTL_LIFETIMEBOUND {
-        return static_cast<base_type&&>(*this);
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator generic_snapshot_type() const& {
+    __UTL_HIDE_FROM_ABI explicit inline constexpr operator generic_snapshot_type() const& {
         return generic_snapshot_type{static_cast<generic_file_type const&>(*this), status_, time_};
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr operator generic_snapshot_type() && noexcept(
-        UTL_TRAIT_is_nothrow_constructible(generic_snapshot_type, generic_file_type,
-            file_status const&, tempus::time_point<file_clock_t> const&)) {
-        return generic_snapshot_type{static_cast<generic_file_type&&>(*this), status_, time_};
     }
 
     __UTL_HIDE_FROM_ABI inline constexpr operator explicit_file_view<Type>() const noexcept UTL_LIFETIMEBOUND {
         return explicit_file_view<Type>{path()};
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
-        return file_view{path()};
+    __UTL_HIDE_FROM_ABI inline constexpr operator explicit_file_view_snapshot<Type>() const noexcept UTL_LIFETIMEBOUND {
+        return explicit_file_view_snapshot<Type>{path(), status(), time()};
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr operator generic_snapshot_type() && noexcept(
+        UTL_TRAIT_is_nothrow_constructible(generic_snapshot_type, generic_file_type,
+            file_status const&, tempus::time_point<file_clock_t> const&)) {
+        return generic_snapshot_type{static_cast<generic_file_type&&>(*this), status_, time_};
     }
 
     using base_type::path;
