@@ -4,31 +4,9 @@
 
 #include "utl/utl_config.h"
 
-#if (UTL_TARGET_BSD | UTL_TARGET_APPLE)
-
-#  include <errno.h>
-#  include <fcntl.h>
-#  include <unistd.h>
-
-extern "C" int getdirentries(int fd, char* buf, int nbytes, long* basep);
+#if (UTL_TARGET_APPLE | UTL_TARGET_LINUX | UTL_TARGET_BSD | UTL_TARGET_MICROSOFT)
 
 using path_char = decltype(u8' ');
-
-#elif UTL_TARGET_LINUX
-
-#  include <errno.h>
-#  include <fcntl.h>
-#  include <sys/stat.h>
-#  include <sys/syscall.h>
-#  include <sys/types.h>
-#  include <unistd.h>
-
-using path_char = decltype(u8' ');
-
-#elif UTL_TARGET_MICROSOFT
-
-using path_char = decltype(u8' ');
-// TODO
 
 #else
 
@@ -45,8 +23,4 @@ using path_char = decltype(u8' ');
     }                       \
     }
 
-__UFS_NAMESPACE_BEGIN
-
-enum class file_type;
-
-__UFS_NAMESPACE_END
+#define __UFS __UTL filesystem::

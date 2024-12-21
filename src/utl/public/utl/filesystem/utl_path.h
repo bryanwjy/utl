@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "utl/filesystem/utl_filesystem_fwd.h"
+
 #include "utl/concepts/utl_allocator_type.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/memory/utl_allocator.h"
@@ -13,6 +15,7 @@
 __UFS_NAMESPACE_BEGIN
 
 using path_view = __UTL basic_string_view<path_char>;
+using zpath_view = __UTL basic_zstring_view<path_char>;
 
 struct __UTL_ABI_PUBLIC absolute_t {
     __UTL_HIDE_FROM_ABI explicit inline constexpr absolute_t() noexcept = default;
@@ -52,15 +55,15 @@ template <typename Char>
 struct utils : constants<Char> {
     using typename constants<Char>::view_type;
     using typename constants<Char>::pointer;
-    using utils<Char>::slash;
-    using utils<Char>::back;
-    using utils<Char>::dot;
+    using constants<Char>::slash;
+    using constants<Char>::back;
+    using constants<Char>::dot;
 #if UTL_TARGET_MICROSOFT
-    using utils<Char>::drive_delimiter_forward;
-    using utils<Char>::drive_delimiter_back;
-    using utils<Char>::back_slash;
-    using utils<Char>::delimiters;
-    using utils<Char>::colon;
+    using constants<Char>::drive_delimiter_forward;
+    using constants<Char>::drive_delimiter_back;
+    using constants<Char>::back_slash;
+    using constants<Char>::delimiters;
+    using constants<Char>::colon;
 #endif
 
     struct split_components {
@@ -86,7 +89,7 @@ struct utils : constants<Char> {
         }
 
     protected:
-        __UTL_HIDE_FROM_ABI inline explicit counter(split_components c) noexcept
+        __UTL_HIDE_FROM_ABI inline explicit counter_base(split_components c) noexcept
             : size{c.head.size(), 0} {}
 
         __UTL_HIDE_FROM_ABI inline bool perform_count(
@@ -351,6 +354,8 @@ class collapse_t<relative_t, Char> : utils<Char> {
     using typename utils<Char>::view_type;
     using typename utils<Char>::pointer;
     using typename utils<Char>::split_components;
+    using typename utils<Char>::writer_base;
+    using typename utils<Char>::counter_base;
     using utils<Char>::slash;
     using utils<Char>::back;
     using utils<Char>::dot;
@@ -547,7 +552,7 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline size_type effective_length(
 
 template <typename Char = path_char>
 UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> basename(
-    __UTL basic_string_view<Char> view) const noexcept {
+    __UTL basic_string_view<Char> view) noexcept {
     using traits_type = details::constants<Char>;
 #if UTL_TARGET_MICROSOFT
     view = remove_suffix(view, !view.empty() && traits_type::delimiters.contains(view.back()));
@@ -561,8 +566,7 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_stri
 
 template <typename Char = path_char>
 UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> basename(
-    __UTL basic_string_view<Char> path, __UTL basic_string_view<Char> suffix) const noexcept {
-    using traits_type = details::constants<Char>;
+    __UTL basic_string_view<Char> path, __UTL basic_string_view<Char> suffix) noexcept {
     auto const name = basename(path);
     if (suffix.size() == name.size()) {
         // Quirk of the `basename` operation
@@ -575,15 +579,14 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, PURE) inline UTL_CONSTEXPR_CXX14 __UTL basic_stri
 
 template <typename Char = path_char>
 __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> extension(
-    __UTL basic_string_view<Char> path) const noexcept {
+    __UTL basic_string_view<Char> path) noexcept {
     auto const name = basename(path);
     return remove_prefix(name, add_sat(name.find_last_of((Char)'.'), 1));
 }
 
 template <typename Char = path_char>
 __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 __UTL basic_string_view<Char> dirname(
-    __UTL basic_string_view<Char> path) const noexcept {
-    using view_type = __UTL basic_string_view<Char>;
+    __UTL basic_string_view<Char> path) noexcept {
     using traits_type = details::constants<Char>;
     // if relative and result is empty return dot
     // if absolute and result is empty return root

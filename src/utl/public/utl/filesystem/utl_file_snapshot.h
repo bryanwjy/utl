@@ -16,6 +16,9 @@ class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : public basic_file<Alloc> {
     using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
 
+    using base_type::status;
+    using base_type::to_snapshot;
+
 public:
     __UTL_HIDE_FROM_ABI inline basic_file_snapshot() = delete;
     template <typename Arg UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_constructible(base_type, Arg))>
@@ -107,6 +110,9 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot : public basic_explicit
         , time_{other.time()} {
         UTL_ASSERT(status().type == Type);
     }
+
+    using base_type::status;
+    using base_type::to_snapshot;
 
 public:
     template <typename Arg UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_constructible(base_type, Arg))>
@@ -200,7 +206,7 @@ public:
         , time_{get_time(file_clock)} {
         UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
-                __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
+                __UTL error_code{error_value::file_type_mismatch}, "file type mismatch"));
     }
 
     __UTL_HIDE_FROM_ABI explicit inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
@@ -224,8 +230,8 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline constexpr operator generic_snapshot_type() && noexcept(
-        UTL_TRAIT_is_nothrow_constructible(generic_snapshot_type, generic_file_type,
-            file_status const&, tempus::time_point<file_clock_t> const&)) {
+        UTL_TRAIT_is_nothrow_constructible(
+            generic_snapshot_type, generic_file_type, file_status const&, time_point const&)) {
         return generic_snapshot_type{static_cast<generic_file_type&&>(*this), status_, time_};
     }
 
@@ -246,7 +252,7 @@ public:
                 time_ = get_time(file_clock);
                 return result<void>{};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, void>();
+                return return result<void>{__UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }

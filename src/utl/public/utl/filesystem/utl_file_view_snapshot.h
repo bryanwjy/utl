@@ -12,6 +12,8 @@ class __UTL_ABI_PUBLIC file_view_snapshot : public file_view {
     using base_type = file_view;
     using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
+    using base_type::status;
+    using base_type::to_snapshot;
 
 public:
     __UTL_HIDE_FROM_ABI inline file_view_snapshot() = delete;
@@ -72,6 +74,8 @@ class __UTL_PUBLIC_TEMPLATE explicit_file_view_snapshot : public explicit_file_v
     using time_type = tempus::time_point<steady_clock_t>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
+    using base_type::status;
+    using base_type::to_snapshot;
 
 public:
     __UTL_HIDE_FROM_ABI inline explicit_file_view_snapshot(
@@ -146,7 +150,7 @@ public:
         , time_{get_time(steady_clock)} {
         UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
-                __UTL error_code{fs_errc::file_type_mismatch}, "file type mismatch"));
+                __UTL error_code{error_value::file_type_mismatch}, "file type mismatch"));
     }
 
     __UTL_HIDE_FROM_ABI explicit inline constexpr operator file_view_snapshot() const noexcept {
@@ -170,7 +174,7 @@ public:
                 time_ = get_time(steady_clock);
                 return result<void>{};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, void>();
+                return result<void>{__UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }

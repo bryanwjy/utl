@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "utl/filesystem/utl_filesystem_fwd.h"
+
 #include "utl/concepts/utl_convertible_to.h"
 #include "utl/filesystem/utl_file_error.h"
 #include "utl/filesystem/utl_file_status.h"
@@ -16,9 +18,6 @@
 #include "utl/utility/utl_to_underlying.h"
 
 __UFS_NAMESPACE_BEGIN
-
-template <file_type Type>
-class __UTL_PUBLIC_TEMPLATE explicit_file_view;
 
 class __UTL_ABI_PUBLIC file_view {
     template <file_type Type>
@@ -81,8 +80,8 @@ public:
                 return result<explicit_snapshot_type<Type>>{
                     __UTL in_place, path(), status, get_time(steady_clock)};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch,
-                    explicit_snapshot_type<Type>>();
+                return result<explicit_snapshot_type<Type>>{
+                    __UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
@@ -128,7 +127,7 @@ public:
     using base_type::parent_directory;
     using base_type::path;
 
-    // TODO: Maybe return error if file type doesn't match?
+    // TODO: Maybe return error if file type no longer match?
     using base_type::status;
 
     __UTL_HIDE_FROM_ABI
@@ -138,22 +137,10 @@ public:
                 return result<snapshot_type>{__UTL in_place, static_cast<base_type const&>(*this),
                     stat, get_time(steady_clock)};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, snapshot_type>();
+                return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
 };
-
-namespace views {
-using file = file_view;
-using regular_file = explicit_file_view<file_type::regular>;
-using directory = explicit_file_view<file_type::directory>;
-using block_device = explicit_file_view<file_type::block_device>;
-using character_device = explicit_file_view<file_type::character_device>;
-using fifo = explicit_file_view<file_type::fifo>;
-using symlink = explicit_file_view<file_type::symlink>;
-using socket = explicit_file_view<file_type::socket>;
-using unknown_file = explicit_file_view<file_type::unknown>;
-} // namespace views
 
 __UFS_NAMESPACE_END

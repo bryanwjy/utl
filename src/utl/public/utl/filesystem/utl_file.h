@@ -2,6 +2,9 @@
 
 #pragma once
 
+#include "utl/filesystem/utl_filesystem_fwd.h"
+
+#include "utl/filesystem/utl_basic_operations.h"
 #include "utl/filesystem/utl_file_error.h"
 #include "utl/filesystem/utl_file_status.h"
 #include "utl/filesystem/utl_file_type.h"
@@ -24,25 +27,13 @@
 
 __UFS_NAMESPACE_BEGIN
 
-template <typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_file;
-
-template <file_type Type, typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_explicit_file;
-
-template <typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_file_snapshot;
-
-template <file_type Type, typename Alloc = __UTL allocator<path_char>>
-class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot;
-
 template <typename Alloc>
 class __UTL_PUBLIC_TEMPLATE basic_file {
     using allocator_type = Alloc;
     using path_container = basic_string<path_char, allocator_type>;
     template <file_type Type>
     using explicit_file = basic_explicit_file<Type, allocator_type>;
-    using view_type = basic_string_view<path_char>;
+    using view_type = path_view;
     using snapshot = __UTL basic_file_snapshot<allocator_type>;
     template <file_type Type>
     using explicit_snapshot = __UTL basic_explicit_file_snapshot<Type, allocator_type>;
@@ -112,8 +103,8 @@ public:
         View const& other, allocator_type const& a = allocator_type{}) UTL_THROWS
         : basic_file{static_cast<file_view>(other).path(), a} {}
 
-    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline constexpr view_type path() const noexcept UTL_LIFETIMEBOUND {
-        return view_type{path_.data(), path_.size()};
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, ALWAYS_INLINE) inline constexpr zpath_view path() const noexcept UTL_LIFETIMEBOUND {
+        return static_cast<zpath_view>{path_};
     }
 
     __UTL_HIDE_FROM_ABI inline constexpr operator file_view() const noexcept UTL_LIFETIMEBOUND {
@@ -177,7 +168,8 @@ public:
                 return result<explicit_snapshot<Type>>{
                     __UTL in_place, *this, status, get_time(steady_clock)};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, explicit_snapshot<Type>>();
+                return result<explicit_snapshot<Type>>{
+                    __UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
@@ -190,7 +182,8 @@ public:
                 return result<explicit_snapshot<Type>>{
                     __UTL in_place, __UTL move(*this), status, get_time(steady_clock)};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, explicit_snapshot<Type>>();
+                return result<explicit_snapshot<Type>>{
+                    __UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
@@ -206,6 +199,7 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file : public basic_file<Alloc> {
     using snapshot_type = __UTL basic_explicit_file_snapshot<Type, allocator_type>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
+    using base_type::to_snapshot;
 
 public:
     __UTL_HIDE_FROM_ABI inline constexpr basic_explicit_file() = delete;
@@ -268,14 +262,14 @@ public:
                 return result<snapshot_type>{__UTL in_place, static_cast<base_type const&>(*this),
                     stat, get_time(steady_clock)};
             } else {
-                return details::make_error<fs_errc::file_type_mismatch, snapshot_type>();
+                return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
 
     __UTL_HIDE_FROM_ABI
     result<snapshot_type> to_snapshot() && noexcept(UTL_TRAIT_is_nothrow_constructible(
-        snapshot_type, base_type, file_status const&, tempus::time_point<file_clock_t>)) {
+        snapshot_type, base_type, file_status const&, time_point)) {
         return base_type::status().and_then([&](file_status const& stat) {
             if (stat.type == Type) {
                 return result<snapshot_type>{
@@ -283,7 +277,7 @@ public:
             } else {
                 // It may be possible for file to change type, e.g. other process delete and
                 // recreate as different type
-                return details::make_error<fs_errc::file_type_mismatch, snapshot_type>();
+                return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
             }
         });
     }
