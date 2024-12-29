@@ -622,16 +622,14 @@ template <typename Char = path_char, UTL_CONCEPT_CXX20(convertible_to<basic_stri
 UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
 __UTL_HIDE_FROM_ABI inline size_t join(__UTL span<Char> dst, V&& root, Vs&&... args) noexcept;
 
-template <typename Char = path_char, UTL_CONCEPT_CXX20(allocator_type) Alloc,
-    UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>) V,
+template <typename Char = path_char, UTL_CONCEPT_CXX20(allocator_type) Alloc, size_t ShortSize,
     UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>)... Vs UTL_CONSTRAINT_CXX11(
-        UTL_TRAIT_conjunction(
-            bool_constant<(sizeof...(Vs) > 0) && sizeof(allocator_traits<Alloc>) != 0>,
-            is_convertible<V, basic_string_view<Char>>,
-            is_convertible<Vs, basic_string_view<Char>>...))>
+    UTL_TRAIT_conjunction(
+        bool_constant<(sizeof...(Vs) > 0) && sizeof(allocator_traits<Alloc>) != 0>,
+        is_convertible<Vs, basic_string_view<Char>>...))>
 UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
-__UTL_HIDE_FROM_ABI inline basic_string<Char, Alloc> join(
-    basic_string<Char, Alloc>&& root, Vs&&... args) noexcept;
+__UTL_HIDE_FROM_ABI inline basic_short_string<Char, ShortSize, char_traits<Char>, Alloc> join(
+    basic_short_string<Char, ShortSize, char_traits<Char>, Alloc>&& root, Vs&&... args) noexcept;
 
 template <typename Char = path_char,
     UTL_CONCEPT_CXX20(allocator_type) Alloc = __UTL allocator<Char>,
@@ -642,6 +640,22 @@ template <typename Char = path_char,
             is_convertible<Vs, basic_string_view<Char>>...))>
 UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
 __UTL_HIDE_FROM_ABI inline basic_string<Char, Alloc> join(V&& root, Vs&&... args) noexcept;
+
+template <typename Char = path_char, UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>) V,
+    UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>)... Vs UTL_CONSTRAINT_CXX11(
+    UTL_TRAIT_conjunction(
+        bool_constant<(sizeof...(Vs) > 0)>, is_convertible<V, basic_string_view<Char>>,
+        is_convertible<Vs, basic_string_view<Char>>...))>
+UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
+__UTL_HIDE_FROM_ABI inline size_t join(__UTL span<Char> dst, V&& root, Vs&&... args) noexcept;
+
+// is_string_appendable TODO
+template <typename Char = path_char, typename T,
+    UTL_CONCEPT_CXX20(convertible_to<basic_string_view<Char>>)... Vs UTL_CONSTRAINT_CXX11(
+    UTL_TRAIT_conjunction(bool_constant<(sizeof...(Vs) > 0)>, is_string_appendable<T>,
+        is_convertible<Vs, basic_string_view<Char>>...))>
+UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
+__UTL_HIDE_FROM_ABI inline T& append(T& root, Vs&&... args) noexcept;
 
 } // namespace path
 

@@ -12,8 +12,7 @@
 __UFS_NAMESPACE_BEGIN
 
 enum class error_value : int {
-    file_type_mismatch,
-    bad_allocation
+    file_type_mismatch
 };
 
 __UTL_ABI_PUBLIC error_category const& filesystem_category() noexcept;
