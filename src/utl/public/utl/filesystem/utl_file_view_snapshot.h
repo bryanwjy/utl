@@ -12,7 +12,6 @@ class __UTL_ABI_PUBLIC file_view_snapshot : public file_view {
     using base_type = file_view;
     using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
-    using base_type::status;
     using base_type::to_snapshot;
 
 public:
@@ -43,7 +42,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline file_view_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...},
         , status_{base_type::status().value()}
-        , time_{get_time(steady_clock)} {}
+        , time_{get_time(tempus::steady_clock)} {}
 
     using base_type::path;
 
@@ -56,9 +55,17 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
-        return base_type::status().and_then([this](file_status const& status) {
+        if (status_.type != file_type::symlink) {
+            return base_type::status().and_then([this](file_status const& status) {
+                status_ = status;
+                time_ = get_time(tempus::steady_clock);
+                return result<void>{};
+            });
+        }
+
+        return base_type::symlink_status().and_then([this](file_status const& status) {
             status_ = status;
-            time_ = get_time(steady_clock);
+            time_ = get_time(tempus::steady_clock);
             return result<void>{};
         });
     }
@@ -147,7 +154,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline explicit_file_view_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...}
         , status_{base_type::status().value()}
-        , time_{get_time(steady_clock)} {
+        , time_{get_time(tempus::steady_clock)} {
         UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
                 __UTL error_code{error_value::file_type_mismatch}, "file type mismatch"));
@@ -168,14 +175,9 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
-        return base_type::status().and_then([this](file_status const& status) {
-            if (status.type == Type) {
-                status_ = status;
-                time_ = get_time(steady_clock);
-                return result<void>{};
-            } else {
-                return result<void>{__UTL unexpect, error_value::file_type_mismatch};
-            }
+        return base_type::status().transform([this](file_status const& status) {
+            status_ = status;
+            time_ = get_time(tempus::steady_clock);
         });
     }
 

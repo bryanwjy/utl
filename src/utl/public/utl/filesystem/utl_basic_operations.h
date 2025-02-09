@@ -4,7 +4,6 @@
 
 #include "utl/filesystem/utl_file_status.h"
 #include "utl/filesystem/utl_path.h"
-#include "utl/filesystem/utl_permissions.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/filesystem/utl_result.h"
 #include "utl/string/utl_basic_short_string.h"

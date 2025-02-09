@@ -12,7 +12,9 @@
 __UFS_NAMESPACE_BEGIN
 
 enum class error_value : int {
-    file_type_mismatch
+    file_type_mismatch,
+    walk_limit_exceeded,
+    memory_error,
 };
 
 __UTL_ABI_PUBLIC error_category const& filesystem_category() noexcept;
@@ -22,7 +24,7 @@ __UTL_HIDE_FROM_ABI inline error_code make_error_code(error_value code) noexcept
 }
 
 enum class failure_source : int {
-    filesystem_api,
+    ufs_api,
     utl_api,
     system,
 };
@@ -30,6 +32,9 @@ enum class failure_source : int {
 __UTL_HIDE_FROM_ABI inline error_condition make_error_condition(failure_source code) noexcept {
     return error_condition(static_cast<int>(code), filesystem_category());
 }
+
+template <typename T>
+using result = __UTL expected<T, __UTL error_code>;
 
 __UFS_NAMESPACE_END
 
@@ -40,8 +45,5 @@ struct is_error_code_enum<__UFS error_value> : true_type {};
 
 template <>
 struct is_error_condition_enum<__UFS failure_source> : true_type {};
-
-template <typename T>
-using result = __UTL expected<T, __UTL error_code>;
 
 UTL_NAMESPACE_END

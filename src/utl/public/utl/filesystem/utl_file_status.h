@@ -4,7 +4,6 @@
 
 #include "utl/filesystem/utl_filesystem_fwd.h"
 
-#include "utl/filesystem/utl_permissions.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/filesystem/utl_result.h"
 #include "utl/tempus/utl_clock.h"

@@ -2,4 +2,10 @@
 
 #pragma once
 
-#include "utl/filesystem/utl_platform.h"
+#include "utl/filesystem/utl_filesystem_fwd.h"
+
+#include "utl/utility/utl_to_underlying.h"
+
+__UFS_NAMESPACE_BEGIN
+
+__UFS_NAMESPACE_END

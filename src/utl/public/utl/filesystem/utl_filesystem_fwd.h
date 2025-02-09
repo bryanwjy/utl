@@ -22,7 +22,7 @@ enum class file_type : unsigned char {
     COUNT = invalid
 };
 
-enum class perms {
+enum class perms : int {
     none = 0,
     owner_read = 0400,
     owner_write = 0200,
@@ -43,12 +43,28 @@ enum class perms {
     unknown = 0xffff
 };
 
+enum class file_access : unsigned char {
+    read = 1,
+    write = 2,
+    read_write = 3
+};
+
 using time_point = __UTL tempus::time_point<tempus::file_clock_t>;
 using path_view = __UTL basic_string_view<path_char>;
 using zpath_view = __UTL basic_zstring_view<path_char>;
 
 struct __UTL_ABI_PUBLIC file_status;
 struct __UTL_ABI_PUBLIC storage_info;
+
+template <file_access A>
+class __UTL_PUBLIC_TEMPLATE basic_file_handle;
+
+using file_handle = basic_file_handle<file_access::read_write>;
+using read_file_handle = basic_file_handle<file_access::read>;
+using write_file_handle = basic_file_handle<file_access::write>;
+
+template <typename... Os>
+struct __UTL_PUBLIC_TEMPLATE open_flags_t;
 
 class __UTL_ABI_PUBLIC file_view;
 

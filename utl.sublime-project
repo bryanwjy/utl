@@ -3,13 +3,13 @@
 	[
 		{
 			"path": "src/utl",
-			"name": "UTL"
+			"name": "UTL",
 		},
 		{
 			"path": ".",
 			"name": "Root",
-			"folder_exclude_patterns": [ "*/" ]
-		}
+			"folder_exclude_patterns": [ "*/"],
+		},
 	],
 	"settings":
 	{
@@ -17,42 +17,42 @@
 		"ClangFormat":
 		{
 			"format_on_save":true,
-			"style": "File"
-		}
+			"style": "File",
+		},
 	},
 	"syntax_override": {
-		".*\\.(h|cpp)$": ["C++", "UTL"]
+		".*\\.(h|cpp)$": ["C++", "UTL"],
 	},
 	"build_systems":
 	[
 		{
 			"name": "UTL Build",
-			"cancel": { "kill": true },
+			"cancel": { "kill": true, },
 			"file_regex": "^(/...*?):([0-9]+):?([0-9]+)",
 			"variants":
 			[
 				{
 					"name": "Build and run tests",
-					"shell_cmd": "make -C $project_path/src/utl tests -j8"
+					"shell_cmd": "make -C $project_path/src/utl tests -j8",
 				},
 				{
 					"name": "Compile only",
-					"shell_cmd": "make -C $project_path/src/utl compile -j8"
+					"shell_cmd": "make -C $project_path/src/utl compile -j8",
 				},
 				{
 					"name": "Preprocess only",
-					"shell_cmd": "make -C $project_path/src/utl preprocess -j8"
+					"shell_cmd": "make -C $project_path/src/utl preprocess -j8",
 				},
 				{
 					"name": "Clean",
-					"shell_cmd": "make -C $project_path/src/utl clean -j8"	
+					"shell_cmd": "make -C $project_path/src/utl clean -j8",	
 				},
 				{
 					"name": "Print Build Variables",
-					"shell_cmd": "make -C $project_path/src/utl print -j8"	
+					"shell_cmd": "make -C $project_path/src/utl print -j8",	
 				}
-			]
+			],
 		}
-	]
+	],
 
 }

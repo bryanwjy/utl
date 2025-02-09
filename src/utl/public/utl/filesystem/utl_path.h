@@ -5,6 +5,7 @@
 #include "utl/filesystem/utl_filesystem_fwd.h"
 
 #include "utl/concepts/utl_allocator_type.h"
+#include "utl/filesystem/utl_file_type.h"
 #include "utl/filesystem/utl_platform.h"
 #include "utl/memory/utl_allocator.h"
 #include "utl/memory/utl_allocator_traits.h"
@@ -319,7 +320,7 @@ private:
     private:
         __UTL_HIDE_FROM_ABI inline void count(split_components c) noexcept {
             while (!c.head.empty() && !counter_base::perform_count(c.head, c.tail)) {
-                // we've come back to the root, so we need to sanitize again
+                // we've come back to the root, so we need to terminate again
                 c = collapse_head(c.tail);
             }
         }
@@ -340,7 +341,7 @@ private:
     private:
         __UTL_HIDE_FROM_ABI inline void copy(split_components c) noexcept {
             while (!c.head.empty() && !writer_base::perform_copy(c.head, c.tail)) {
-                // we've come back to the root, so we need to sanitize again
+                // we've come back to the root, so we need to terminate again
                 c = collapse_head(c.tail);
             }
         }
@@ -451,7 +452,7 @@ private:
     private:
         __UTL_HIDE_FROM_ABI inline void count(split_components c) noexcept {
             while (!c.head.empty() && !counter_base::perform_count(c.head, c.tail)) {
-                // we've come back to the root, so we need to sanitize again
+                // we've come back to the root, so we need to terminate again
                 c = collapse_head(c.tail, [this]() { counter_base::add_backtrack(); });
             }
         }
@@ -473,7 +474,7 @@ private:
     private:
         __UTL_HIDE_FROM_ABI inline void copy(split_components c) noexcept {
             while (!c.head.empty() && !writer_base::perform_copy(c.head, c.tail)) {
-                // we've come back to the root, so we need to sanitize again
+                // we've come back to the root, so we need to terminate again
                 c = collapse_head(c.tail, [this]() { writer_base::write_backtack(); });
             }
         }
@@ -658,5 +659,105 @@ UTL_CONSTRAINT_CXX20(sizeof...(Vs) > 0)
 __UTL_HIDE_FROM_ABI inline T& append(T& root, Vs&&... args) noexcept;
 
 } // namespace path
+
+namespace details {
+namespace path {
+
+template <typename T>
+struct typeof_file {
+    static constexpr file_type value = file_type::unknown;
+};
+
+template <file_type T>
+struct typeof_file<explicit_file_view_snapshot<T>> {
+    static constexpr file_type value = T;
+};
+
+template <file_type T>
+struct typeof_file<explicit_file_view<T>> {
+    static constexpr file_type value = T;
+};
+
+template <typename Alloc, file_type T>
+struct typeof_file<basic_explicit_file<T, Alloc>> {
+    static constexpr file_type value = T;
+};
+
+template <typename Alloc, file_type T>
+struct typeof_file<basic_explicit_file_snapshot<T, Alloc>> {
+    static constexpr file_type value = T;
+};
+
+/**
+ * Internal 'sanitization' utility to null-terminate paths forwarded to system calls
+ */
+namespace terminator {
+
+#ifndef UFS_DEFAULT_TEMPORARY_PATH_CAPACITY
+#  define UFS_DEFAULT_TEMPORARY_PATH_CAPACITY 256
+#endif
+/**
+ * Temporary storage
+ */
+using storage = __UTL basic_short_string<path_char, UFS_DEFAULT_TEMPORARY_PATH_CAPACITY>;
+
+using path_result = __UTL expected<storage, __UTL error_code>;
+using view_result = __UTL expected<zpath_view, __UTL error_code>;
+
+// TODO: C++17
+template <typename T>
+concept terminated_container = requires(T const& t) {
+    { t.path() } noexcept -> __UTL same_as<zpath_view>;
+};
+
+template <typename T>
+concept view_container = requires(T const& t) {
+    { t.path() } noexcept -> __UTL same_as<path_view>;
+};
+
+struct terminated_path_t {
+    __UTL_HIDE_FROM_ABI inline constexpr view_result operator()(zpath_view view) const noexcept {
+        return view_result{__UTL in_place, static_cast<zpath_view>(range)};
+    }
+
+    __UTL_HIDE_FROM_ABI inline constexpr path_result operator()(path_view view) const {
+        return path_result{__UTL in_place, view};
+    }
+
+    template <terminated_container T>
+    __UTL_HIDE_FROM_ABI inline constexpr view_result operator()(T const& t) const noexcept {
+        return view_result{__UTL in_place, t.path()};
+    }
+
+    template <view_container T>
+    __UTL_HIDE_FROM_ABI inline constexpr path_result operator()(T const& t) const {
+        return this->operator()(t.path());
+    }
+};
+
+template <typename T>
+concept typed_terminated_container = terminated_container<T> && is_valid<typeof_file<T>::value>() &&
+    typeof_file<T>::value != file_type::unknown;
+
+template <typename T>
+concept typed_view_container = view_container<T> && is_valid<typeof_file<T>::value>() &&
+    typeof_file<T>::value != file_type::unknown;
+} // namespace terminator
+
+inline namespace cpo {
+UTL_DEFINE_CUSTOMIZATION_POINT(terminator::terminated_path_t, terminated_path);
+}
+
+template <typename T>
+concept container = requires(T const& t) { __UFS path::details::terminated_path(t); };
+template <typename T>
+concept known_type_container =
+    container<T> && (terminator::typed_view_container<T> || typed_terminated_container<T>);
+
+template <file_type Type, typename T>
+concept typed_container = known_type_container<T> && terminator::typeof_file<T>::value == Type;
+
+} // namespace path
+} // namespace details
 
 __UFS_NAMESPACE_END

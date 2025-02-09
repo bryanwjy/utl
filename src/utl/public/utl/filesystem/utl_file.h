@@ -30,7 +30,7 @@ __UFS_NAMESPACE_BEGIN
 template <typename Alloc>
 class __UTL_PUBLIC_TEMPLATE basic_file {
     using allocator_type = Alloc;
-    using path_container = basic_string<path_char, allocator_type>;
+    using path_type = basic_string<path_char, allocator_type>;
     template <file_type Type>
     using explicit_file = basic_explicit_file<Type, allocator_type>;
     using view_type = path_view;
@@ -41,7 +41,7 @@ class __UTL_PUBLIC_TEMPLATE basic_file {
     template <typename T UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))>
     UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_base_of(basic_file, remove_cvref_t<T>))
     __UTL_HIDE_FROM_ABI static inline constexpr auto get_path(T&& t) noexcept
-        -> decltype(__UTL forward_like<T>(__UTL declval<path_container&>())) {
+        -> decltype(__UTL forward_like<T>(__UTL declval<path_type&>())) {
         return __UTL forward_like<T>(((copy_cv_t<remove_reference_t<T>, basic_file>&)t).path_);
     }
 
@@ -49,10 +49,10 @@ public:
     __UTL_HIDE_FROM_ABI inline basic_file() = delete;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file const& other) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other) noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(path_container)) = default;
+        UTL_TRAIT_is_nothrow_move_constructible(path_type)) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file const& other) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file& operator=(basic_file&& other) noexcept(
-        UTL_TRAIT_is_nothrow_move_assignable(path_container)) = default;
+        UTL_TRAIT_is_nothrow_move_assignable(path_type)) = default;
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file() noexcept = default;
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(
@@ -60,12 +60,12 @@ public:
         : path_{other.path_, a} {}
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file(basic_file&& other,
-        allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(path_container,
-        path_container, allocator_type const&))
+        allocator_type const& a) noexcept(UTL_TRAIT_is_nothrow_constructible(path_type, path_type,
+        allocator_type const&))
         : path_{__UTL move(other.path_), a} {}
 
-    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(path_container&& path) noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(path_container))
+    __UTL_HIDE_FROM_ABI explicit inline UTL_CONSTEXPR_CXX14 basic_file(path_type&& path) noexcept(
+        UTL_TRAIT_is_nothrow_move_constructible(path_type))
         : path_{__UTL move(path)} {}
 
     template <UTL_CONCEPT_CXX20(convertible_to<view_type>)... Vs UTL_CONSTRAINT_CXX11(
@@ -115,6 +115,10 @@ public:
         return __UFS status(path());
     }
 
+    __UTL_HIDE_FROM_ABI inline result<file_status> symlink_status() const noexcept {
+        return __UFS symlink_status(path());
+    }
+
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_file<file_type::directory>
     parent_directory() const& noexcept {
         return explicit_file<file_type::directory>{__UFS path::dirname(path_)};
@@ -134,15 +138,15 @@ public:
 
     __UTL_HIDE_FROM_ABI inline result<snapshot> to_snapshot() const& {
         return this->status().and_then([this](file_status const& status) {
-            return result<snapshot>{__UTL in_place, *this, status, get_time(steady_clock)};
+            return result<snapshot>{__UTL in_place, *this, status, get_time(tempus::steady_clock)};
         });
     }
 
     __UTL_HIDE_FROM_ABI inline result<snapshot> to_snapshot() && noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(path_container)) {
+        UTL_TRAIT_is_nothrow_move_constructible(path_type)) {
         return this->status().and_then([&](file_status const& status) {
             return result<snapshot>{
-                __UTL in_place, __UTL move(*this), status, get_time(steady_clock)};
+                __UTL in_place, __UTL move(*this), status, get_time(tempus::steady_clock)};
         });
     }
 
@@ -166,7 +170,7 @@ public:
         return this->status().and_then([this](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
-                    __UTL in_place, *this, status, get_time(steady_clock)};
+                    __UTL in_place, *this, status, get_time(tempus::steady_clock)};
             } else {
                 return result<explicit_snapshot<Type>>{
                     __UTL unexpect, error_value::file_type_mismatch};
@@ -176,11 +180,11 @@ public:
 
     template <file_type Type>
     __UTL_HIDE_FROM_ABI inline result<explicit_snapshot<Type>> to_snapshot() && noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(path_container)) {
+        UTL_TRAIT_is_nothrow_move_constructible(path_type)) {
         return this->status().and_then([&](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
-                    __UTL in_place, __UTL move(*this), status, get_time(steady_clock)};
+                    __UTL in_place, __UTL move(*this), status, get_time(tempus::steady_clock)};
             } else {
                 return result<explicit_snapshot<Type>>{
                     __UTL unexpect, error_value::file_type_mismatch};
@@ -189,7 +193,7 @@ public:
     }
 
 private:
-    path_container path_;
+    path_type path_;
 };
 
 template <file_type Type, typename Alloc>
@@ -199,7 +203,7 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file : public basic_file<Alloc> {
     using snapshot_type = __UTL basic_explicit_file_snapshot<Type, allocator_type>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
-    using base_type::to_snapshot;
+    using base_type::symlink_status;
 
 public:
     __UTL_HIDE_FROM_ABI inline constexpr basic_explicit_file() = delete;
@@ -252,33 +256,39 @@ public:
     using base_type::parent_directory;
     using base_type::path;
 
-    // TODO: Maybe return error if file type doesn't match?
-    using base_type::status;
+    __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
+        auto output =
+            Type == file_type::symlink ? base_type::symlink_status() : base_type::status();
+        if (!output) {
+            return output;
+        }
+
+        if (output->status != Type) {
+            return result<file_status>{__UTL unexpect, error_value::file_type_mismatch};
+        }
+
+        return output;
+    }
+
+    template <file_type>
+    result<snapshot_type> to_snapshot() const& noexcept = delete;
+    template <file_type>
+    result<snapshot_type> to_snapshot() && noexcept = delete;
 
     __UTL_HIDE_FROM_ABI
     result<snapshot_type> to_snapshot() const& UTL_THROWS {
-        return base_type::status().and_then([&](file_status const& stat) {
-            if (stat.type == Type) {
-                return result<snapshot_type>{__UTL in_place, static_cast<base_type const&>(*this),
-                    stat, get_time(steady_clock)};
-            } else {
-                return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
-            }
+        return this->status().transform([&](file_status&& stat) {
+            return snapshot_type{static_cast<base_type const&>(*this), __UTL move(stat),
+                get_time(tempus::steady_clock)};
         });
     }
 
     __UTL_HIDE_FROM_ABI
     result<snapshot_type> to_snapshot() && noexcept(UTL_TRAIT_is_nothrow_constructible(
         snapshot_type, base_type, file_status const&, time_point)) {
-        return base_type::status().and_then([&](file_status const& stat) {
-            if (stat.type == Type) {
-                return result<snapshot_type>{
-                    __UTL in_place, static_cast<base_type&&>(*this), stat, get_time(steady_clock)};
-            } else {
-                // It may be possible for file to change type, e.g. other process delete and
-                // recreate as different type
-                return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
-            }
+        return this->status().transform([&](file_status&& stat) {
+            return snapshot_type{
+                static_cast<base_type&&>(*this), __UTL move(stat), get_time(tempus::steady_clock)};
         });
     }
 };

@@ -9,61 +9,88 @@
 #endif
 
 #include "utl/expected/utl_expected.h"
+#include "utl/filesystem/utl_file_access.h"
 #include "utl/filesystem/utl_path.h"
 
 extern "C" int close(int);
 
 __UFS_NAMESPACE_BEGIN
 
-namespace io {
-enum class openmode : uint64_t;
-}
+namespace details {
+enum file_descriptor_t : int {
+    invalid = -1
+};
+} // namespace details
 
-class __UTL_ABI_PUBLIC file_handle {
-    static constexpr int invalid_handle = -1;
-    class __UTL_ABI_PRIVATE construct {};
+template <file_access A>
+class __UTL_PUBLIC_TEMLATE basic_file_handle {
+    template <file_access A>
+    friend basic_file_handle;
 
 public:
-    using native_handle_type = int;
-    file_handle(file_handle const&) = delete;
-    file_handle& operator=(file_handle const&) = delete;
-    __UTL_HIDE_FROM_ABI inline constexpr file_handle() noexcept : handle{invalid_handle} {}
-    __UTL_HIDE_FROM_ABI inline constexpr file_handle(file_handle&& other) noexcept
-        : handle{__UTL exchange(other.handle, invalid_handle)} {}
-    __UTL_HIDE_FROM_ABI inline constexpr file_handle& operator=(file_handle&& other) noexcept {
+    using native_handle_type = details::file_descriptor_t;
+
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) friend basic_file_handle duplicate(
+        basic_file_handle const& other) noexcept;
+
+    __UTL_HIDE_FROM_ABI explicit basic_file_handle(native_handle_type handle) noexcept
+        : handle_{handle} {}
+
+    basic_file_handle(basic_file_handle const&) = delete;
+    basic_file_handle& operator=(basic_file_handle const&) = delete;
+    __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle() noexcept
+        : handle{native_handle_type::invalid} {}
+    __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle(basic_file_handle&& other) noexcept
+        : handle_{__UTL exchange(other.handle_, native_handle_type::invalid)} {}
+
+    __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle& operator=(
+        basic_file_handle&& other) noexcept {
         reset();
         handle = other.release();
         return *this;
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr native_handle_type release() noexcept {
-        return __UTL exchange(other.handle, invalid_handle);
+    template <file_access O UTL_CONSTRAINT_CXX11((O & A) == A)>
+    UTL_CONSTRAINT_CXX20((O & A) == A)
+    __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle(basic_file_handle<O>&& other) noexcept
+        : handle_{__UTL exchange(other.handle_, native_handle_type::invalid)} {}
+
+    template <file_access O UTL_CONSTRAINT_CXX11((O & A) == A)>
+    UTL_CONSTRAINT_CXX20((O & A) == A)
+    __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle& operator=(
+        basic_file_handle<O>&& other) noexcept {
+        reset();
+        handle = other.release();
+        return *this;
+    }
+
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) inline constexpr native_handle_type release() noexcept {
+        return __UTL exchange(other.handle_, native_handle_type::invalid);
     }
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 void reset() noexcept {
-        if (handle != invalid_handle) {
-            ::close(handle);
+        if (handle_ != native_handle_type::invalid) {
+            ::close(handle_);
         }
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr native_handle_type native_handle() const noexcept {
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) inline constexpr native_handle_type
+    native_handle() const noexcept {
         return handle;
     }
 
-    __UTL_HIDE_FROM_ABI explicit inline constexpr operator bool() const noexcept {
-        return handle != invalid_handle;
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) explicit inline constexpr operator bool() const noexcept {
+        return handle != native_handle_type::invalid;
     }
 
-    __UTL_HIDE_FROM_ABI inline constexpr bool is_open() const noexcept {
+    UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) inline constexpr bool is_open() const noexcept {
         return static_cast<bool>(*this);
     }
 
-    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~file_handle() noexcept { reset(); }
+    __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~basic_file_handle() noexcept { reset(); }
 
 private:
-    __UTL_HIDE_FROM_ABI explicit file_handle(construct, native_handle_type handle) noexcept
-        : handle{handle} {}
-    native_handle_type handle;
+    native_handle_type handle_;
 };
 
 __UFS_NAMESPACE_END

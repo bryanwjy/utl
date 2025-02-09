@@ -12,11 +12,10 @@ template <typename Alloc = __UTL allocator<path_char>>
 class __UTL_PUBLIC_TEMPLATE basic_file_snapshot : public basic_file<Alloc> {
     using base_type = basic_file<Alloc>;
     using allocator_type = Alloc;
-    using path_container = basic_string<path_char, Alloc>;
+    using path_type = basic_string<path_char, Alloc>;
     using time_type = tempus::time_point<steady_clock_t>;
     using view_type = basic_string_view<path_char>;
 
-    using base_type::status;
     using base_type::to_snapshot;
 
 public:
@@ -44,7 +43,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline basic_file_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...},
         , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {}
+        , time_{get_time(tempus::steady_clock)} {}
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 basic_file_snapshot(
         basic_file_snapshot&& other, allocator_type const& a) UTL_THROWS
@@ -73,9 +72,17 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
-        return base_type::status().and_then([this](file_status const& status) {
+        if (status_.type != file_type::symlink) {
+            return base_type::status().and_then([this](file_status const& status) {
+                status_ = status;
+                time_ = get_time(tempus::steady_clock);
+                return result<void>{};
+            });
+        }
+
+        return base_type::symlink_status().and_then([this](file_status const& status) {
             status_ = status;
-            time_ = get_time(file_clock);
+            time_ = get_time(tempus::steady_clock);
             return result<void>{};
         });
     }
@@ -111,7 +118,6 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file_snapshot : public basic_explicit
         UTL_ASSERT(status().type == Type);
     }
 
-    using base_type::status;
     using base_type::to_snapshot;
 
 public:
@@ -203,7 +209,7 @@ public:
     __UTL_HIDE_FROM_ABI explicit inline basic_explicit_file_snapshot(Args&&... args) UTL_THROWS
         : base_type{__UTL forward<Args>(args)...}
         , status_{base_type::status().value()}
-        , time_{get_time(file_clock)} {
+        , time_{get_time(tempus::steady_clock)} {
         UTL_THROW_IF(status().type != Type,
             __UTL error_code_exception(
                 __UTL error_code{error_value::file_type_mismatch}, "file type mismatch"));
@@ -246,14 +252,9 @@ public:
     }
 
     __UTL_HIDE_FROM_ABI inline result<void> refresh_status() noexcept {
-        return base_type::status().and_then([this](file_status const& status) {
-            if (status.type == Type) {
-                status_ = status;
-                time_ = get_time(file_clock);
-                return result<void>{};
-            } else {
-                return return result<void>{__UTL unexpect, error_value::file_type_mismatch};
-            }
+        return base_type::status().transform([this](file_status const& status) {
+            status_ = status;
+            time_ = get_time(tempus::steady_clock);
         });
     }
 

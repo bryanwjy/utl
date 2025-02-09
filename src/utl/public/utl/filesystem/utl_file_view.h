@@ -62,6 +62,10 @@ public:
         return __UFS status(path());
     }
 
+    __UTL_HIDE_FROM_ABI inline result<file_status> symlink_status() const noexcept {
+        return __UFS symlink_status(path());
+    }
+
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_type<file_type::directory>
     parent_directory() noexcept {
         return explicit_type<file_type::directory>{__UFS path::dirname(path())};
@@ -69,7 +73,8 @@ public:
 
     __UTL_HIDE_FROM_ABI inline result<snapshot_type> to_snapshot() const noexcept {
         return this->status().and_then([this](file_status const& status) {
-            return result<snapshot_type>{__UTL in_place, path(), status, get_time(steady_clock)};
+            return result<snapshot_type>{
+                __UTL in_place, path(), status, get_time(tempus::steady_clock)};
         });
     }
 
@@ -78,7 +83,7 @@ public:
         return this->status().and_then([this](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot_type<Type>>{
-                    __UTL in_place, path(), status, get_time(steady_clock)};
+                    __UTL in_place, path(), status, get_time(tempus::steady_clock)};
             } else {
                 return result<explicit_snapshot_type<Type>>{
                     __UTL unexpect, error_value::file_type_mismatch};
@@ -87,7 +92,7 @@ public:
     }
 
 private:
-    path_container path_;
+    view_type path_;
 };
 
 template <file_type Type>
@@ -127,15 +132,29 @@ public:
     using base_type::parent_directory;
     using base_type::path;
 
-    // TODO: Maybe return error if file type no longer match?
-    using base_type::status;
+    __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
+        auto output =
+            Type == file_type::symlink ? base_type::symlink_status() : base_type::status();
+        if (!output) {
+            return output;
+        }
+
+        if (output->status != Type) {
+            return result<file_status>{__UTL unexpect, error_value::file_type_mismatch};
+        }
+
+        return output;
+    }
+
+    template <file_type>
+    result<snapshot_type> to_snapshot() const noexcept = delete;
 
     __UTL_HIDE_FROM_ABI
     inline result<snapshot_type> to_snapshot() const noexcept {
-        return base_type::status().and_then([&](file_status const& stat) {
+        return this->status().and_then([&](file_status const& stat) {
             if (stat.type == Type) {
                 return result<snapshot_type>{__UTL in_place, static_cast<base_type const&>(*this),
-                    stat, get_time(steady_clock)};
+                    stat, get_time(tempus::steady_clock)};
             } else {
                 return result<snapshot_type>{__UTL unexpect, error_value::file_type_mismatch};
             }
