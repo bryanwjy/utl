@@ -7,6 +7,7 @@
 #include "utl/tempus/utl_clock_fwd.h"
 
 #include "utl/filesystem/utl_platform.h"
+#include "utl/io/utl_access.h"
 
 __UFS_NAMESPACE_BEGIN
 enum class file_type : unsigned char {
@@ -43,12 +44,6 @@ enum class perms : int {
     unknown = 0xffff
 };
 
-enum class file_access : unsigned char {
-    read = 1,
-    write = 2,
-    read_write = 3
-};
-
 using time_point = __UTL tempus::time_point<tempus::file_clock_t>;
 using path_view = __UTL basic_string_view<path_char>;
 using zpath_view = __UTL basic_zstring_view<path_char>;
@@ -56,12 +51,12 @@ using zpath_view = __UTL basic_zstring_view<path_char>;
 struct __UTL_ABI_PUBLIC file_status;
 struct __UTL_ABI_PUBLIC storage_info;
 
-template <file_access A>
+template <io::access A>
 class __UTL_PUBLIC_TEMPLATE basic_file_handle;
 
-using file_handle = basic_file_handle<file_access::read_write>;
-using read_file_handle = basic_file_handle<file_access::read>;
-using write_file_handle = basic_file_handle<file_access::write>;
+using file_handle = basic_file_handle<io::access::read_write>;
+using read_file_handle = basic_file_handle<io::access::read>;
+using write_file_handle = basic_file_handle<io::access::write>;
 
 template <typename... Os>
 struct __UTL_PUBLIC_TEMPLATE open_flags_t;

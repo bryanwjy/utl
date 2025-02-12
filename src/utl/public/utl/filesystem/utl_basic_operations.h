@@ -11,10 +11,6 @@
 
 __UFS_NAMESPACE_BEGIN
 
-namespace details {
-using path_string = __UTL basic_short_string<path_char, 256>;
-}
-
 /**
  * Retrieves the file status of a given path WITHOUT follwoing symlinks
  *
@@ -24,8 +20,14 @@ using path_string = __UTL basic_short_string<path_char, 256>;
  */
 __UTL_ABI_PUBLIC result<file_status> status(zpath_view view) noexcept;
 __UTL_HIDE_FROM_ABI inline result<file_status> status(path_view view) UTL_THROWS {
-    details::path_string path{view};
+    auto const path = details::path::terminated_path(view);
     return status(static_cast<zpath_view>(path));
+}
+
+__UTL_ABI_PUBLIC result<file_status> symlink_status(zpath_view view) noexcept;
+__UTL_HIDE_FROM_ABI inline result<file_status> symlink_status(path_view view) UTL_THROWS {
+    auto const path = details::path::terminated_path(view);
+    return symlink_status(static_cast<zpath_view>(path));
 }
 
 /**
@@ -38,15 +40,16 @@ __UTL_HIDE_FROM_ABI inline result<file_status> status(path_view view) UTL_THROWS
  */
 __UTL_ABI_PUBLIC result<bool> equivalent(zpath_view left, zpath_view right) noexcept;
 __UTL_HIDE_FROM_ABI inline result<bool> equivalent(zpath_view left, path_view right) UTL_THROWS {
-    details::path_string other{right};
+    auto const other = details::path::terminated_path(right);
     return equivalent(left, static_cast<zpath_view>(other));
 }
 __UTL_HIDE_FROM_ABI inline result<bool> equivalent(path_view left, zpath_view right) UTL_THROWS {
-    details::path_string other{left};
+    auto const other = details::path::terminated_path(left);
     return equivalent(static_cast<zpath_view>(other), right);
 }
 __UTL_ABI_PUBLIC inline result<bool> equivalent(path_view left, path_view right) UTL_THROWS {
-    details::path_string lpath{left}, rpath{right};
+    auto const lpath = details::path::terminated_path(left);
+    auto const rpath = details::path::terminated_path(right);
     return equivalent(static_cast<zpath_view>(lpath), static_cast<zpath_view>(rpath));
 }
 
@@ -60,15 +63,16 @@ __UTL_ABI_PUBLIC inline result<bool> equivalent(path_view left, path_view right)
  */
 __UTL_ABI_PUBLIC result<void> rename(zpath_view from, zpath_view to) noexcept;
 __UTL_HIDE_FROM_ABI inline result<void> rename(zpath_view from, path_view to) UTL_THROWS {
-    details::path_string to_path{to};
+    auto const to_path = details::path::terminated_path(to);
     return rename(from, static_cast<zpath_view>(to_path));
 }
 __UTL_HIDE_FROM_ABI inline result<void> rename(path_view from, zpath_view to) UTL_THROWS {
-    details::path_string from_path{from};
+    auto const from_path = details::path::terminated_path(from);
     return rename(static_cast<zpath_view>(from_path), to);
 }
 __UTL_HIDE_FROM_ABI inline result<void> rename(path_view from, path_view to) UTL_THROWS {
-    details::path_string from_path{from}, to_path{to};
+    auto const from_path = details::path::terminated_path(from);
+    auto const to_path = details::path::terminated_path(to);
     return rename(static_cast<zpath_view>(from_path), static_cast<zpath_view>(to_path));
 }
 
@@ -84,7 +88,7 @@ __UTL_HIDE_FROM_ABI inline result<void> rename(path_view from, path_view to) UTL
  */
 __UTL_ABI_PUBLIC result<void> unlink(zpath_view file) noexcept;
 __UTL_HIDE_FROM_ABI result<void> unlink(path_view file) UTL_THROWS {
-    details::path_string path{file};
+    auto const path = details::path::terminated_path(file);
     return unlink(static_cast<zpath_view>(path));
 }
 
@@ -97,7 +101,7 @@ __UTL_HIDE_FROM_ABI result<void> unlink(path_view file) UTL_THROWS {
  */
 __UTL_ABI_PUBLIC result<void> remove_directory(zpath_view directory) noexcept;
 __UTL_HIDE_FROM_ABI result<void> remove_directory(path_view directory) UTL_THROWS {
-    details::path_string path{directory};
+    auto const path = details::path::terminated_path(directory);
     return remove_directory(static_cast<zpath_view>(path));
 }
 
@@ -126,7 +130,7 @@ struct storage_info {
  */
 __UTL_ABI_PUBLIC result<storage_info> storage(zpath_view path) noexcept;
 __UTL_ABI_PUBLIC result<storage_info> storage(path_view path) noexcept {
-    details::path_string path_with_term{path};
+    auto const path_with_term = details::path::terminated_path(directory);
     return storage(static_cast<zpath_view>(path_with_term));
 }
 

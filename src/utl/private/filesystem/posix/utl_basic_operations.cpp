@@ -7,13 +7,13 @@
     !UTL_TARGET_NINTENDO
 #  include "utl/system_error/utl_system_error.h"
 
-#  include <stdio.h>
 #  include <sys/stat.h>
 #  include <sys/statvfs.h>
 #  include <sys/types.h>
 #  include <unistd.h>
 
 #  include <cerrno>
+#  include <cstdlib>
 
 __UFS_NAMESPACE_BEGIN
 
@@ -64,7 +64,7 @@ static result<T> error_from_errno() noexcept {
 
 result<file_status> status(zpath_view view) noexcept {
     struct stat intermediate;
-    if (::lstat(reinterpret_cast<char const*>(view.data()), &intermediate) != 0) {
+    if (::lstat(reinterpret_cast<char const*>(view.data()), &intermediate) != EXIT_SUCCESS) {
         return error_from_errno<file_status>();
     }
 
@@ -73,11 +73,11 @@ result<file_status> status(zpath_view view) noexcept {
 
 result<bool> equivalent(zpath_view left, zpath_view right) noexcept {
     struct stat stats[2];
-    if (::stat(reinterpret_cast<char const*>(left.data()), stats) != 0) {
+    if (::stat(reinterpret_cast<char const*>(left.data()), stats) != EXIT_SUCCESS) {
         return error_from_errno<bool>();
     }
 
-    if (::stat(reinterpret_cast<char const*>(right.data()), stats + 1) != 0) {
+    if (::stat(reinterpret_cast<char const*>(right.data()), stats + 1) != EXIT_SUCCESS) {
         return error_from_errno<bool>();
     }
 
@@ -86,7 +86,7 @@ result<bool> equivalent(zpath_view left, zpath_view right) noexcept {
 
 result<void> rename(zpath_view from, zpath_view to) noexcept {
     if (::rename(reinterpret_cast<char const*>(from.data()),
-            reinterpret_cast<char const*>(to.data())) != 0) {
+            reinterpret_cast<char const*>(to.data())) != EXIT_SUCCESS) {
         return error_from_errno<void>();
     }
 
@@ -94,7 +94,7 @@ result<void> rename(zpath_view from, zpath_view to) noexcept {
 }
 
 result<void> unlink(zpath_view file) noexcept {
-    if (::unlink(reinterpret_cast<char const*>(file.data())) != 0) {
+    if (::unlink(reinterpret_cast<char const*>(file.data())) != EXIT_SUCCESS) {
         return error_from_errno<void>();
     }
 
@@ -102,7 +102,7 @@ result<void> unlink(zpath_view file) noexcept {
 }
 
 result<void> remove_directory(zpath_view file) noexcept {
-    if (::rmdir(reinterpret_cast<char const*>(file.data())) != 0) {
+    if (::rmdir(reinterpret_cast<char const*>(file.data())) != EXIT_SUCCESS) {
         return error_from_errno<void>();
     }
 
@@ -111,7 +111,7 @@ result<void> remove_directory(zpath_view file) noexcept {
 
 result<storage_info> storage(zpath_view path) noexcept {
     struct statvfs fs_stat;
-    if (::statvfs(reinterpret_cast<char const*>(path.data()), &fs_stat) != 0) {
+    if (::statvfs(reinterpret_cast<char const*>(path.data()), &fs_stat) != EXIT_SUCCESS) {
         return error_from_errno<storage_info>();
     }
 
@@ -123,4 +123,5 @@ result<storage_info> storage(zpath_view path) noexcept {
 }
 
 __UFS_NAMESPACE_END
-#endif // UTL_TARGET_APPLE | UTL_TARGET_LINUX | UTL_TARGET_BSD
+#endif // (UTL_TARGET_APPLE | UTL_TARGET_LINUX | UTL_TARGET_BSD) && !UTL_TARGET_SONY &&
+       // !UTL_TARGET_NINTENDO

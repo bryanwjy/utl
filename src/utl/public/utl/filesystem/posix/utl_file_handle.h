@@ -9,7 +9,7 @@
 #endif
 
 #include "utl/expected/utl_expected.h"
-#include "utl/filesystem/utl_file_access.h"
+#include "utl/filesystem/utl_io::access.h"
 #include "utl/filesystem/utl_path.h"
 
 extern "C" int close(int);
@@ -22,9 +22,9 @@ enum file_descriptor_t : int {
 };
 } // namespace details
 
-template <file_access A>
+template <io::access A>
 class __UTL_PUBLIC_TEMLATE basic_file_handle {
-    template <file_access A>
+    template <io::access A>
     friend basic_file_handle;
 
 public:
@@ -50,12 +50,12 @@ public:
         return *this;
     }
 
-    template <file_access O UTL_CONSTRAINT_CXX11((O & A) == A)>
+    template <io::access O UTL_CONSTRAINT_CXX11((O & A) == A)>
     UTL_CONSTRAINT_CXX20((O & A) == A)
     __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle(basic_file_handle<O>&& other) noexcept
         : handle_{__UTL exchange(other.handle_, native_handle_type::invalid)} {}
 
-    template <file_access O UTL_CONSTRAINT_CXX11((O & A) == A)>
+    template <io::access O UTL_CONSTRAINT_CXX11((O & A) == A)>
     UTL_CONSTRAINT_CXX20((O & A) == A)
     __UTL_HIDE_FROM_ABI inline constexpr basic_file_handle& operator=(
         basic_file_handle<O>&& other) noexcept {

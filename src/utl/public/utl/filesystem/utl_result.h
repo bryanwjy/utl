@@ -14,7 +14,7 @@ __UFS_NAMESPACE_BEGIN
 enum class error_value : int {
     file_type_mismatch,
     walk_limit_exceeded,
-    memory_error,
+    symlink_descriptors_unsupported,
 };
 
 __UTL_ABI_PUBLIC error_category const& filesystem_category() noexcept;

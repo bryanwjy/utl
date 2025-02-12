@@ -203,7 +203,6 @@ class __UTL_PUBLIC_TEMPLATE basic_explicit_file : public basic_file<Alloc> {
     using snapshot_type = __UTL basic_explicit_file_snapshot<Type, allocator_type>;
     static_assert(
         __UTL to_underlying(Type) < __UTL to_underlying(file_type::invalid), "Invalid file type");
-    using base_type::symlink_status;
 
 public:
     __UTL_HIDE_FROM_ABI inline constexpr basic_explicit_file() = delete;
@@ -255,6 +254,8 @@ public:
 
     using base_type::parent_directory;
     using base_type::path;
+
+    __UTL_HIDE_FROM_ABI inline result<file_status> symlink_status() const noexcept = delete;
 
     __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
         auto output =
