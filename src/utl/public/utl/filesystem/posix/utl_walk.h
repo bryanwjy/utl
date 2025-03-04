@@ -42,6 +42,7 @@ template <>
 class dir_reader<walk_attributes::follow_symlinks_t> {
 
     __UTL_ABI_PUBLIC dir_reader(zpath_view path) noexcept;
+    __UTL_HIDE_FROM_ABI dir_reader(read_file_handle&& path) noexcept : fd(path) {}
     dir_reader(dir_reader const&) = delete;
     dir_reader& operator=(dir_reader const&) = delete;
     dir_reader(dir_reader&&) noexcept = delete;

@@ -85,57 +85,6 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr int to_posix_m
     return 0;
 }
 
-template <typename Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL bool ensure_valid_flags() noexcept {
-    static_assert(!has_flag<trucate_t<true>, Flags>::value || !has_flag<read_only_t, Flags>::value,
-        "Only writable files may be truncated");
-    static_assert(!has_flag<exclusive_t<true>, Flags>::value || has_flag<creation_t, Flags>::value,
-        "Exclusive flag only valid on file creation");
-    static_assert(
-        !has_flag<write_integrity_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
-        "Integrity flags may only be applied on writable files");
-    static_assert(!has_flag<temporary_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
-        "Temporary files must be writable");
-    static_assert(!has_flag<path_only_t<false>, Flags>::value ||
-            ((!has_flag<access_t, Flags>::value || has_flag<read_only_t, Flags>::value) &&
-                !UTL_TRAIT_disjunction(has_flag<exclusivity_t, Flags>,
-                    has_flag<control_terminal_t, Flags>, has_flag<truncation_t, Flags>,
-                    has_flag<buffer_behaviour_t, Flags>, has_flag<write_integrity_t, Flags>,
-                    has_flag<creation_t, Flags>, has_flag<append_mode_t, Flags>,
-                    has_flag<blocking_behaviour_t, Flags>)),
-        "Flag operation disabled due to set 'path_only' flag");
-    return true;
-}
-
-template <file_type Type, typename Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL bool ensure_valid_type_and_flags() noexcept {
-    static_assert(ensure_valid_flags<Flags>(), "Invalid flags");
-    static_assert(
-        __UTL to_underlying(Type) < __UTL to_underlying(file_type::COUNT), "Invalid file type");
-
-    static_assert(!has_flag<creation_t, Flags>::value || Type == file_type::regular_file,
-        "Only regular files may be created");
-    static_assert(!has_flag<trucate_t<true>, Flags>::value || Type == file_type::regular_file,
-        "Only regular files may be truncated");
-    static_assert(!has_flag<set_control_terminal_t<false>, Flags>::value ||
-            Type == file_type::character_device,
-        "'no_control_tty' flag only applies to character devices");
-    using is_read_only =
-        disjunction<negation<has_flag<access_t, Flags>>, has_flag<read_only_t, Flags>>;
-    static_assert(
-        Type != file_type::directory || is_read_only::value, "Directories cannot be writable");
-    static_assert(Type != file_type::symlink ||
-            (is_read_only::value &&
-                !UTL_TRAIT_disjunction(has_flag<exclusivity_t, Flags>,
-                    has_flag<control_terminal_t, Flags>, has_flag<truncation_t, Flags>,
-                    has_flag<buffer_behaviour_t, Flags>, has_flag<write_integrity_t, Flags>,
-                    has_flag<creation_t, Flags>, has_flag<append_mode_t, Flags>,
-                    has_flag<blocking_behaviour_t, Flags>)),
-        "Invalid flags detected, symlinks always have IO disabled");
-
-    return true;
-}
-
 struct arguments_t {
     int flags;
     int mode;
@@ -165,8 +114,8 @@ open(P const& path, Flags flags) noexcept(
     noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
     // if P is a known symlink, Type can be specified to override symlink behaviour,
     // otherwise, P must either be unknown or equal to Type
-    static_assert(__UFS_TYPEOF_FILE(P) == file_type::unknown ||
-            __UFS_TYPEOF_FILE(P) == file_type::symlink || Type == __UFS_TYPEOF_FILE(P),
+    static_assert(__UFS_FILE_TYPE_OF(P) == file_type::unknown ||
+            __UFS_FILE_TYPE_OF(P) == file_type::symlink || Type == __UFS_FILE_TYPE_OF(P),
         "Type mismatch");
     static_assert(details::open::ensure_valid_type_and_flags<Type, Flags>(), "Invalid input");
     UTL_IF_CONSTEXPR(Type == file_type::symlink) {
@@ -196,7 +145,7 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD)
 UTL_ENABLE_IF_CXX11(open_result_t<Flags>, details::open::is_valid_flags<Flags>::value)
 open(P const& path, Flags flags) noexcept(
     noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
-    return open<__UFS_TYPEOF_FILE(P)>(path, flags);
+    return open<__UFS_FILE_TYPE_OF(P)>(path, flags);
 }
 
 template <UTL_CONCEPT_CXX20(details::path::container) P,
@@ -226,8 +175,8 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD)
 UTL_ENABLE_IF_CXX11(open_result_t<Flags>, details::open::is_valid_flags<Flags>::value)
 open_at(read_file_handle const& dir, P const& path, Flags flags) noexcept(
     noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
-    static_assert(__UFS_TYPEOF_FILE(P) == file_type::unknown ||
-            __UFS_TYPEOF_FILE(P) == file_type::symlink || Type == __UFS_TYPEOF_FILE(P),
+    static_assert(__UFS_FILE_TYPE_OF(P) == file_type::unknown ||
+            __UFS_FILE_TYPE_OF(P) == file_type::symlink || Type == __UFS_FILE_TYPE_OF(P),
         "Type mismatch");
     static_assert(details::open::ensure_valid_type_and_flags<Type, Flags>(), "Invalid input");
 
@@ -259,7 +208,7 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD)
 UTL_ENABLE_IF_CXX11(open_result_t<Flags>, details::open::is_valid_flags<Flags>::value)
 open_at(read_file_handle const& dir, P const& path, Flags flags) noexcept(
     noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
-    return open_at<__UFS_TYPEOF_FILE(P)>(dir, path, flags);
+    return open_at<__UFS_FILE_TYPE_OF(P)>(dir, path, flags);
 }
 
 template <UTL_CONCEPT_CXX20(details::path::container) P,

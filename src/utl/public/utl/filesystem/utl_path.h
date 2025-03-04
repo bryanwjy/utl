@@ -727,16 +727,16 @@ struct terminated_path_t {
 
 template <typename T>
 concept typed_terminated_container = requires {
-    __UFS_TYPEOF_FILE(T);
-    requires is_valid<__UFS_TYPEOF_FILE(T)>();
+    __UFS_FILE_TYPE_OF(T);
+    requires is_valid<__UFS_FILE_TYPE_OF(T)>();
     requires unqualified_terminatable<T> || terminated_container<T>;
     requires typeof_file<T>::value != file_type::unknown;
 };
 
 template <typename T>
 concept typed_view_container = requires {
-    __UFS_TYPEOF_FILE(T);
-    requires is_valid<__UFS_TYPEOF_FILE(T)>();
+    __UFS_FILE_TYPE_OF(T);
+    requires is_valid<__UFS_FILE_TYPE_OF(T)>();
     requires view_container<T>;
     requires typeof_file<T>::value != file_type::unknown;
 };
@@ -753,7 +753,7 @@ concept typed_container = container<T> &&
     (terminator::typed_view_container<T> || terminator::typed_terminated_container<T>);
 
 template <typename T, file_type Type>
-concept container_of = typed_container<T> && __UFS_TYPEOF_FILE(T) == Type;
+concept container_of = typed_container<T> && __UFS_FILE_TYPE_OF(T) == Type;
 
 } // namespace path
 } // namespace details

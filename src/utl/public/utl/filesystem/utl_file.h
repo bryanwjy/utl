@@ -111,14 +111,6 @@ public:
         return file_view{path()};
     }
 
-    __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
-        return __UFS status(path());
-    }
-
-    __UTL_HIDE_FROM_ABI inline result<file_status> symlink_status() const noexcept {
-        return __UFS symlink_status(path());
-    }
-
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX14 explicit_file<file_type::directory>
     parent_directory() const& noexcept {
         return explicit_file<file_type::directory>{__UFS path::dirname(path_)};
@@ -132,19 +124,18 @@ public:
         }
 
         // dir is "."
-        path_ = dir;
-        return explicit_file<file_type::directory>{__UTL move(path_)};
+        return explicit_file<file_type::directory>{dir};
     }
 
     __UTL_HIDE_FROM_ABI inline result<snapshot> to_snapshot() const& {
-        return this->status().and_then([this](file_status const& status) {
+        return status(*this).and_then([this](file_status const& status) {
             return result<snapshot>{__UTL in_place, *this, status, get_time(tempus::steady_clock)};
         });
     }
 
     __UTL_HIDE_FROM_ABI inline result<snapshot> to_snapshot() && noexcept(
         UTL_TRAIT_is_nothrow_move_constructible(path_type)) {
-        return this->status().and_then([&](file_status const& status) {
+        return status(*this).and_then([&](file_status const& status) {
             return result<snapshot>{
                 __UTL in_place, __UTL move(*this), status, get_time(tempus::steady_clock)};
         });
@@ -167,7 +158,7 @@ public:
 
     template <file_type Type>
     __UTL_HIDE_FROM_ABI inline result<explicit_snapshot<Type>> to_snapshot() const& {
-        return this->status().and_then([this](file_status const& status) {
+        return status(*this).and_then([this](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
                     __UTL in_place, *this, status, get_time(tempus::steady_clock)};
@@ -181,7 +172,7 @@ public:
     template <file_type Type>
     __UTL_HIDE_FROM_ABI inline result<explicit_snapshot<Type>> to_snapshot() && noexcept(
         UTL_TRAIT_is_nothrow_move_constructible(path_type)) {
-        return this->status().and_then([&](file_status const& status) {
+        return status(*this).and_then([&](file_status const& status) {
             if (status.type == Type) {
                 return result<explicit_snapshot<Type>>{
                     __UTL in_place, __UTL move(*this), status, get_time(tempus::steady_clock)};
@@ -255,22 +246,6 @@ public:
     using base_type::parent_directory;
     using base_type::path;
 
-    __UTL_HIDE_FROM_ABI inline result<file_status> symlink_status() const noexcept = delete;
-
-    __UTL_HIDE_FROM_ABI inline result<file_status> status() const noexcept {
-        auto output =
-            Type == file_type::symlink ? base_type::symlink_status() : base_type::status();
-        if (!output) {
-            return output;
-        }
-
-        if (output->status != Type) {
-            return result<file_status>{__UTL unexpect, error_value::file_type_mismatch};
-        }
-
-        return output;
-    }
-
     template <file_type>
     result<snapshot_type> to_snapshot() const& noexcept = delete;
     template <file_type>
@@ -278,7 +253,7 @@ public:
 
     __UTL_HIDE_FROM_ABI
     result<snapshot_type> to_snapshot() const& UTL_THROWS {
-        return this->status().transform([&](file_status&& stat) {
+        return status(*this).transform([&](file_status&& stat) {
             return snapshot_type{static_cast<base_type const&>(*this), __UTL move(stat),
                 get_time(tempus::steady_clock)};
         });
@@ -287,7 +262,7 @@ public:
     __UTL_HIDE_FROM_ABI
     result<snapshot_type> to_snapshot() && noexcept(UTL_TRAIT_is_nothrow_constructible(
         snapshot_type, base_type, file_status const&, time_point)) {
-        return this->status().transform([&](file_status&& stat) {
+        return status(*this).transform([&](file_status&& stat) {
             return snapshot_type{
                 static_cast<base_type&&>(*this), __UTL move(stat), get_time(tempus::steady_clock)};
         });

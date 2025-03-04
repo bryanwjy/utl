@@ -28,6 +28,9 @@ using flag_type_t = typename flag_type<D>::type;
 } // namespace open
 } // namespace details
 
+template <typename... Os>
+struct __UTL_PUBLIC_TEMPLATE file_flags_t;
+
 template <UTL_CONCEPT_CXX20(derived_from<details::open::flag_t>) Flag, typename... Os>
 UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_base_of(Flag, file_flags_t<Os...>))
 __UTL_HIDE_FROM_ABI inline constexpr UTL_ENABLE_IF_CXX11(
@@ -44,13 +47,18 @@ struct __UTL_PUBLIC_TEMPLATE file_flags_t<Os...> : private Os... {
 
 public:
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_flags_t() noexcept = default;
+    __UTL_HIDE_FROM_ABI inline constexpr file_flags_t(file_flags_t const&) noexcept = default;
+    __UTL_HIDE_FROM_ABI inline constexpr file_flags_t& operator=(
+        file_flags_t const&) noexcept = default;
 
     template <typename... Args UTL_CONSTRAINT_CXX11(sizeof...(Args) == sizeof...(Os))>
+    UTL_CONSTRAINT_CXX20(sizeof...(Args) == sizeof...(Os))
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_flags_t(Args... args) noexcept
         : Os{args}... {}
 
     template <typename Arg, typename... Ps UTL_CONSTRAINT_CXX11(
         (sizeof...(Ps) + 1 == sizeof...(Os)))>
+    UTL_CONSTRAINT_CXX20(sizeof...(Ps) + 1 == sizeof...(Os))
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_flags_t(
         file_flags_t<Ps...> opt, Arg arg) noexcept
         : file_flags_t{((Ps const&)opt)..., arg} {
@@ -60,6 +68,10 @@ public:
 
     template <typename U UTL_CONSTRAINT_CXX11(!UTL_TRAIT_disjunction(
         is_same<details::open::flag_type_t<U>, details::open::flag_type_t<Os>>...))>
+    UTL_CONSTRAINT_CXX20(requires(U const& u) {
+        flag_base(u);
+        requires !(... || same_as<details::open::flag_type_t<U>, details::open::flag_type_t<Os>>);
+    })
     __UTL_HIDE_FROM_ABI inline constexpr file_flags_t<Os..., U> operator|(U u) const noexcept {
         return file_flags_t<Os..., U>{*this, u};
     }
@@ -76,25 +88,33 @@ protected:
         return {};
     }
 
-    template <typename U UTL_CONSTRAINT_CXX11(
+    template <UTL_CONCEPT_CXX20(derived_from<flag_t>) U UTL_CONSTRAINT_CXX11(
         UTL_TRAIT_is_base_of(flag_t, U) && !UTL_TRAIT_is_base_of(B, U))>
+    UTL_CONSTRAINT_CXX20(!UTL_TRAIT_is_base_of(D, U))
+    __UTL_HIDE_FROM_ABI inline constexpr file_flags_t<D, U> operator|(U u) const noexcept {
+        return file_flags_t<D, U>{static_cast<D const&>(*this), u};
+    }
+};
+
+template <typename D>
+struct flag_base_t<D, void> : flag_t {
+protected:
+    __UTL_HIDE_FROM_ABI ~flag_base_t() noexcept = default;
+    __UTL_HIDE_FROM_ABI friend inline UTL_CONSTEVAL type_identity<D> flag_base(D const&) noexcept {
+        return {};
+    }
+
+    template <UTL_CONCEPT_CXX20(derived_from<flag_t>) U UTL_CONSTRAINT_CXX11(
+        UTL_TRAIT_is_base_of(flag_t, U) && !UTL_TRAIT_is_same(D, U))>
+    UTL_CONSTRAINT_CXX20(!same_as<D, U>)
     __UTL_HIDE_FROM_ABI inline constexpr file_flags_t<D, U> operator|(U u) const noexcept {
         return file_flags_t<D, U>{static_cast<D const&>(*this), u};
     }
 };
 
 struct access_t : flag_t {};
-struct exclusivity_t : flag_t {};
-struct control_terminal_t : flag_t {};
-struct truncation_t : flag_t {};
-struct descriptor_operation_t : flag_t {};
-struct buffer_behaviour_t : flag_t {};
-struct write_integrity_t : flag_t {};
+struct write_sync_t : flag_t {};
 struct creation_t : flag_t {};
-struct exec_behaviour_t : flag_t {};
-struct append_mode_t : flag_t {};
-struct symlink_behaviour_t : flag_t {};
-struct blocking_behaviour_t : flag_t {};
 
 struct create_t : flag_base_t<create_t, creation_t> {
     __UTL_HIDE_FROM_ABI explicit inline constexpr create_t(perms p) noexcept : mode_{p} {}
@@ -140,27 +160,17 @@ struct read_write_t : flag_base_t<read_write_t, access_t> {
     using handle_type = basic_file_handle<io::access::read_write>;
 };
 
-template <bool B>
-struct append_t : flag_t<append_t<B>, append_mode_t> {};
-template <bool B>
-struct exclusive_t : flag_base_t<exclusive_t<B>, exclusivity_t> {};
-template <bool B>
-struct close_on_exec_t : flag_base_t<close_on_exec_t<B>, exec_behaviour_t> {};
-template <bool B>
-struct trucate_t : flag_base_t<truncate_t<B>, truncation_t> {};
-template <bool B>
-struct set_control_terminal_t : flag_base_t<set_control_terminal_t<B>, control_terminal_t> {};
-template <bool B>
-struct path_only_t : flag_base_t<path_only_t<B>, descriptor_operation_t> {};
-template <bool B>
-struct buffered_t : flag_base_t<buffered_t<B>, buffer_behaviour_t> {};
-template <bool B>
-struct follow_symlink_t : flag_base_t<follow_symlink_t<B>, symlink_behaviour_t> {};
-template <bool B>
-struct blocking_t : flag_base_t<non_blocking_t, blocking_behaviour_t> {};
-struct normal_write_integrity_t : flag_base_t<normal_write_integrity_t, write_integrity_t> {};
-struct auto_file_sync_t : flag_base_t<auto_file_sync_t, write_integrity_t> {};
-struct auto_data_sync_t : flag_base_t<auto_data_sync_t, write_integrity_t> {};
+struct append_t : flag_t<append_t> {};
+struct exclusive_t : flag_base_t<exclusive_t> {};
+struct close_on_exec_t : flag_base_t<close_on_exec_t> {};
+struct trucate_t : flag_base_t<truncate_t> {};
+struct no_control_tty_t : flag_base_t<no_control_tty_t> {};
+struct path_only_t : flag_base_t<path_only_t> {};
+struct unbuffered_t : flag_base_t<unbuffered_t> {};
+struct no_follow_symlink_t : flag_base_t<no_follow_symlink_t> {};
+struct non_blocking_t : flag_base_t<non_blocking_t> {};
+struct file_sync_t : flag_base_t<file_sync_t, write_sync_t> {};
+struct data_sync_t : flag_base_t<data_sync_t, write_sync_t> {};
 
 template <typename T>
 struct is_file_flags : false_type {};
@@ -184,74 +194,23 @@ template <typename T>
 concept valid_flags = is_file_flags<T>::value;
 #endif
 
-template <typename F, UTL_CONCEPT_CXX20(details::open::valid_flags) Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr UTL_ENABLE_IF_CXX11(
-    int, __UTL always_true<flag_element_t<F, Flags>>()) to_posix_flags(int) noexcept {
-    /// move this part into src
-    return flag_element_t<F, Flags>::value;
-}
-
-template <typename F, UTL_CONCEPT_CXX20(details::open::valid_flags) Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr int to_posix_flags(...) noexcept {
-    return 0;
-}
-
-template <UTL_CONCEPT_CXX20(details::open::valid_flags) Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr int to_posix_flags(Flags f) noexcept {
-    return to_posix_flags<access_t, Flags>(0) | to_posix_flags<exclusivity_t, Flags>(0) |
-        to_posix_flags<control_terminal_t, Flags>(0) | to_posix_flags<truncation_t, Flags>(0) |
-        to_posix_flags<descriptor_operation_t, Flags>(0) |
-        to_posix_flags<buffer_behaviour_t, Flags>(0) | to_posix_flags<write_integrity_t, Flags>(0) |
-        to_posix_flags<creation_t, Flags>(0) | to_posix_flags<exec_behaviour_t, Flags>(0) |
-        to_posix_flags<append_mode_t, Flags>(0) | to_posix_flags<symlink_behaviour_t, Flags>(0);
-}
-
-template <typename Flags>
-UTL_CONSTRAINT_CXX20(has_flag<creation_t, Flags>::value)
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr UTL_ENABLE_IF_CXX11(
-    int, has_flag<creation_t, Flags>::value) to_posix_mode(Flags f) noexcept {
-    return to_underlying(get<creation_t>(f).mode());
-}
-
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline constexpr int to_posix_mode(...) noexcept {
-    return 0;
-}
-
-template <file_type Type>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL int file_type_flag() noexcept {
-    return 0;
-}
-
-template <>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL int
-file_type_flag<file_type::directory>() noexcept {
-    return O_DIRECTORY;
-}
-
-template <>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL int
-file_type_flag<file_type::symlink>() noexcept {
-    return O_NOFOLLOW | O_PATH;
-}
-
 template <typename Flags>
 UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL bool ensure_valid_flags() noexcept {
-    static_assert(!has_flag<trucate_t<true>, Flags>::value || !has_flag<read_only_t, Flags>::value,
+    static_assert(!has_flag<trucate_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
         "Only writable files may be truncated");
-    static_assert(!has_flag<exclusive_t<true>, Flags>::value || has_flag<creation_t, Flags>::value,
+    static_assert(!has_flag<exclusive_t, Flags>::value || has_flag<creation_t, Flags>::value,
         "Exclusive flag only valid on file creation");
-    static_assert(
-        !has_flag<write_integrity_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
+    static_assert(!has_flag<write_sync_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
         "Integrity flags may only be applied on writable files");
     static_assert(!has_flag<temporary_t, Flags>::value || !has_flag<read_only_t, Flags>::value,
         "Temporary files must be writable");
-    static_assert(!has_flag<path_only_t<false>, Flags>::value ||
+    static_assert(!has_flag<path_only_t, Flags>::value ||
             ((!has_flag<access_t, Flags>::value || has_flag<read_only_t, Flags>::value) &&
-                !UTL_TRAIT_disjunction(has_flag<exclusivity_t, Flags>,
-                    has_flag<control_terminal_t, Flags>, has_flag<truncation_t, Flags>,
-                    has_flag<buffer_behaviour_t, Flags>, has_flag<write_integrity_t, Flags>,
-                    has_flag<creation_t, Flags>, has_flag<append_mode_t, Flags>,
-                    has_flag<blocking_behaviour_t, Flags>)),
+                !UTL_TRAIT_disjunction(has_flag<exclusive_t, Flags>,
+                    has_flag<no_control_tty_t, Flags>, has_flag<truncation_t, Flags>,
+                    has_flag<unbuffered_t, Flags>, has_flag<write_sync_t, Flags>,
+                    has_flag<creation_t, Flags>, has_flag<append_t, Flags>,
+                    has_flag<non_blocking_t, Flags>)),
         "Flag operation disabled due to set 'path_only' flag");
     return true;
 }
@@ -264,10 +223,9 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL bool ensur
 
     static_assert(!has_flag<creation_t, Flags>::value || Type == file_type::regular_file,
         "Only regular files may be created");
-    static_assert(!has_flag<trucate_t<true>, Flags>::value || Type == file_type::regular_file,
+    static_assert(!has_flag<trucate_t, Flags>::value || Type == file_type::regular_file,
         "Only regular files may be truncated");
-    static_assert(!has_flag<set_control_terminal_t<false>, Flags>::value ||
-            Type == file_type::character_device,
+    static_assert(!has_flag<no_control_tty_t, Flags>::value || Type == file_type::character_device,
         "'no_control_tty' flag only applies to character devices");
     using is_read_only =
         disjunction<negation<has_flag<access_t, Flags>>, has_flag<read_only_t, Flags>>;
@@ -275,11 +233,11 @@ UTL_ATTRIBUTES(_HIDE_FROM_ABI, CONST, NODISCARD) inline UTL_CONSTEVAL bool ensur
         Type != file_type::directory || is_read_only::value, "Directories cannot be writable");
     static_assert(Type != file_type::symlink ||
             (is_read_only::value &&
-                !UTL_TRAIT_disjunction(has_flag<exclusivity_t, Flags>,
-                    has_flag<control_terminal_t, Flags>, has_flag<truncation_t, Flags>,
-                    has_flag<buffer_behaviour_t, Flags>, has_flag<write_integrity_t, Flags>,
-                    has_flag<creation_t, Flags>, has_flag<append_mode_t, Flags>,
-                    has_flag<blocking_behaviour_t, Flags>)),
+                UTL_TRAIT_disjunction(has_flag<exclusive_t, Flags>,
+                    has_flag<no_control_tty_t, Flags>, has_flag<truncation_t, Flags>,
+                    has_flag<unbuffered_t, Flags>, has_flag<write_sync_t, Flags>,
+                    has_flag<creation_t, Flags>, has_flag<append_t, Flags>,
+                    has_flag<non_blocking_t, Flags>)),
         "Invalid flags detected, symlinks always have IO disabled");
 
     return true;
@@ -305,21 +263,19 @@ __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::write_only_t write
 __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::read_write_t read_write{};
 __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::create_factory_t create_file{};
 __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::temporary_factory_t temporary_file{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::exclusive_t<true> exclusive{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::append_t<true> append_mode{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::truncate_t<true> truncate{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::path_only_t<false> path_only{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::buffered_t<false> unbuffered{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::close_on_exec_t<true> close_on_exec{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::blocking_t<false> non_blocking{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::exclusive_t exclusive{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::append_t append_mode{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::truncate_t truncate{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::path_only_t path_only{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::unbuffered_t unbuffered{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::close_on_exec_t close_on_exec{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::non_blocking_t non_blocking{};
 // Specify file_type::symlink implies no_follow
-// __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::follow_symlink_t<false>
+// __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::no_follow_symlink_t
 // no_follow{};
-__UTL_HIDE_FROM_ABI
-    UTL_INLINE_CXX17 constexpr details::open::auto_file_sync_t ensure_file_integrity{};
-__UTL_HIDE_FROM_ABI
-    UTL_INLINE_CXX17 constexpr details::open::auto_data_sync_t ensure_data_integrity{};
-__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::set_control_terminal_t<false> no_control_tty{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::file_sync_t ensure_file_sync{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::data_sync_t ensure_data_sync{};
+__UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 constexpr details::open::no_control_tty_t no_control_tty{};
 
 } // namespace file_flags
 
