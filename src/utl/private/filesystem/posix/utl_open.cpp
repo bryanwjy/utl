@@ -38,43 +38,43 @@ int get_flag(write_only_t) noexcept {
 int get_flag(read_write_t) noexcept {
     return O_RDWR;
 }
-int get_flag(append_t<true>) noexcept {
+int get_flag(append_t) noexcept {
     return O_APPEND;
 }
-int get_flag(exclusive_t<true>) noexcept {
+int get_flag(exclusive_t) noexcept {
     return O_EXCL;
 }
-int get_flag(close_on_exec_t<true>) noexcept {
+int get_flag(close_on_exec_t) noexcept {
     return O_CLOEXEC;
 }
-int get_flag(truncate_t<true>) noexcept {
+int get_flag(truncate_t) noexcept {
     return O_TRUNC;
 }
-int get_flag(set_control_terminal_t<false>) noexcept {
+int get_flag(no_control_tty_t) noexcept {
 #  ifdef O_NOCTTY
     return O_NOCTTY;
 #  else
     return 0;
 #  endif
 }
-int get_flag(path_only_t<true>) noexcept {
+int get_flag(path_only_t) noexcept {
 #  ifdef O_PATH
     return O_PATH;
 #  else
     return 0;
 #  endif
 }
-int get_flag(buffered_t<false>) noexcept {
+int get_flag(unbuffered_t) noexcept {
 #  ifdef O_DIRECT
     return O_DIRECT;
 #  else
     return 0;
 #  endif
 }
-int get_flag(follow_symlink_t<false>) noexcept {
+int get_flag(no_follow_symlink_t) noexcept {
     return O_NOFOLLOW;
 }
-int get_flag(blocking_t<false>) noexcept {
+int get_flag(non_blocking_t) noexcept {
     return O_NONBLOCK;
 }
 int get_flag(auto_file_sync_t) noexcept {

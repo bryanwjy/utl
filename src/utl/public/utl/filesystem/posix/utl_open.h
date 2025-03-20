@@ -26,15 +26,15 @@ UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(write_only_t) noexcep
 UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(read_write_t) noexcept;
 UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(create_t) noexcept;
 UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(temporary_t) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(append_t<true>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(exclusive_t<true>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(close_on_exec_t<true>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(truncate_t<true>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(set_control_terminal_t<false>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(path_only_t<true>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(buffered_t<false>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(follow_symlink_t<false>) noexcept;
-UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(blocking_t<false>) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(append_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(exclusive_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(close_on_exec_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(truncate_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(no_control_tty_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(path_only_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(unbuffered_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(no_follow_symlink_t) noexcept;
+UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(non_blocking_t) noexcept;
 UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(auto_file_sync_t) noexcept;
 UTL_ATTRIBUTES(_ABI_PUBLIC, CONST, NODISCARD) int get_flag(auto_data_sync_t) noexcept;
 
