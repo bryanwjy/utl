@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "utl/preprocessor/utl_concatenation.h"
+
 #define __UTL_COMPILER_TAG_CONCAT_1(NAME, MAJOR, MINOR, PATCH) NAME##_##MAJOR##MINOR##PATCH
 #define __UTL_COMPILER_TAG_CONCAT(NAME, MAJOR, MINOR, PATCH) \
     __UTL_COMPILER_TAG_CONCAT_1(NAME, MAJOR, MINOR, PATCH)

@@ -165,7 +165,7 @@ struct interlocked_adaptor<T, enable_if_t<UTL_TRAIT_is_sized_integral(8, T)>> :
 
 #if UTL_CXX20
 template <typename T>
-requires (is_pointer_v<T>)
+requires is_pointer_v<T>
 struct interlocked_adaptor<T> : details::basic_adaptor<T, void*> {};
 #else
 template <typename T>

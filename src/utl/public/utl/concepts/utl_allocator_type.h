@@ -13,6 +13,11 @@
 #include "utl/type_traits/utl_is_swappable.h"
 #include "utl/utility/utl_move.h"
 
+UTL_DISABLE_WARNING_PUSH()
+#if UTL_COMPILER_CLANG_BASED
+UTL_DISABLE_WARNING("-Wlogical-op-parentheses")
+#endif
+
 #if UTL_CXX20
 UTL_NAMESPACE_BEGIN
 
@@ -23,10 +28,10 @@ template <typename T>
 concept comparability = empty_type<T> || requires {
     typename T::is_always_equal;
     requires T::is_always_equal::value;
-} || (__UTL equality_comparable<T> && requires(T const& l, T const& r) {
+} || __UTL equality_comparable<T> && requires(T const& l, T const& r) {
     { l == r } noexcept;
     { l != r } noexcept;
-});
+};
 
 template <typename T>
 concept copy_propogation = requires { typename T::propagate_on_container_copy_assignment; } &&
@@ -42,19 +47,19 @@ concept swap_propogation =
 
 template <typename T>
 concept copy_assignability =
-    !copy_propogation<T> || (assignable_from<T&, T const&> && requires(T& l, T const& r) {
+    !copy_propogation<T> || assignable_from<T&, T const&> && requires(T& l, T const& r) {
         { l = r } noexcept;
-    });
+    };
 
 template <typename T>
 concept move_assignability =
-    !move_propogation<T> || (assignable_from<T&, T&&> && requires(T& l, T&& r) {
+    !move_propogation<T> || assignable_from<T&, T&&> && requires(T& l, T&& r) {
         { l = __UTL move(r) } noexcept;
-    });
+    };
 
 template <typename T>
 concept swappability =
-    !swap_propogation<T> || (__UTL swappable<T> && __UTL is_nothrow_swappable_v<T>);
+    !swap_propogation<T> || __UTL swappable<T> && __UTL is_nothrow_swappable_v<T>;
 
 } // namespace allocator
 } // namespace details
@@ -69,3 +74,5 @@ concept allocator_type = copy_constructible<T> && move_constructible<T> &&
 
 UTL_NAMESPACE_END
 #endif
+
+UTL_DISABLE_WARNING_POP()
