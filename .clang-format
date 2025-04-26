@@ -95,7 +95,7 @@ IncludeCategories:
   - Regex:           '^<.*>'
     Priority:        40
 
-IfMacros: ['UTL_TRY','UTL_IF_CONSTEVAL']
+IfMacros: ['UTL_TRY','UTL_IF_CONSTEVAL','UTL_IF_CONSTEXPR']
 AttributeMacros: []
 StatementMacros: ['UTL_NAMESPACE_BEGIN', 'UTL_NAMESPACE_END']
 Macros:
@@ -127,3 +127,5 @@ Macros:
 - UTL_LIFETIMEBOUND=[[clang::lifetimebound]]
 - UTL_UNLIKELY=[[unlikely]]
 - UTL_LIKELY=[[likely]]
+- '__UTL=::utl::'
+- '__UTF=::utl::filesystem::'

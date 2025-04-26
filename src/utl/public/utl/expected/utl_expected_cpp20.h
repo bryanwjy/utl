@@ -16,6 +16,7 @@
 #include "utl/concepts/utl_boolean_testable.h"
 #include "utl/concepts/utl_constructible_from.h"
 #include "utl/concepts/utl_convertible_to.h"
+#include "utl/concepts/utl_different_from.h"
 #include "utl/concepts/utl_invocable.h"
 #include "utl/concepts/utl_same_as.h"
 #include "utl/concepts/utl_void_type.h"
@@ -69,9 +70,9 @@ UTL_NAMESPACE_BEGIN
 
 template <typename T, typename E>
 class __UTL_PUBLIC_TEMPLATE expected : private details::expected::storage_base<T, E> {
-    static_assert(UTL_TRAIT_is_destructible(T), "Invalid value type");
-    static_assert(!UTL_TRAIT_is_reference(T), "Invalid value type");
-    static_assert(!UTL_TRAIT_is_function(T), "Invalid value type");
+    static_assert(is_destructible_v<T>, "Invalid value type");
+    static_assert(!is_reference_v<T>, "Invalid value type");
+    static_assert(!is_function_v<T>, "Invalid value type");
     static_assert(!__UTL_TRAIT_unexpect_tag(remove_cvref_t<T>), "Invalid value type");
     static_assert(!__UTL_TRAIT_in_place_tag(remove_cvref_t<T>), "Invalid value type");
     static_assert(!__UTL_TRAIT_is_unexpected(remove_cvref_t<T>), "Invalid value type");
@@ -111,13 +112,13 @@ public:
     using rebind = expected<U, error_type>;
 
     __UTL_HIDE_FROM_ABI explicit(is_explicit_constructible_v<
-        T>) inline constexpr expected() noexcept(UTL_TRAIT_is_nothrow_default_constructible(T))
-    requires (UTL_TRAIT_is_default_constructible(T))
+        T>) inline constexpr expected() noexcept(is_nothrow_default_constructible_v<T>)
+    requires is_default_constructible_v<T>
         : base_type{__UTL in_place} {}
     __UTL_HIDE_FROM_ABI inline constexpr expected(expected const& other) noexcept(
-        UTL_TRAIT_is_nothrow_copy_constructible(base_type)) = default;
+        is_nothrow_copy_constructible_v<base_type>) = default;
     __UTL_HIDE_FROM_ABI inline constexpr expected(expected&& other) noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(base_type)) = default;
+        is_nothrow_move_constructible_v<base_type>) = default;
 
     template <typename T1, typename E1>
     requires can_convert<T1, E1, T1 const&, E1 const&>::value
@@ -137,7 +138,7 @@ public:
 
     template <typename U = T>
     requires (constructible_from<T, U> && !__UTL_TRAIT_in_place_tag(remove_cvref_t<U>) &&
-        !same_as<expected, remove_cvref_t<U>> &&
+        different_from<expected, remove_cvref_t<U>> &&
         !details::is_unexpected_type_v<remove_cvref_t<U>> &&
         (!is_boolean_v<T> || !__UTL_TRAIT_is_expected(remove_cvref_t<U>)))
     __UTL_HIDE_FROM_ABI explicit(!is_convertible_v<U, T>) inline constexpr expected(
@@ -145,25 +146,24 @@ public:
         : base_type(__UTL in_place, __UTL forward<U>(value)) {}
 
     template <typename U>
-    requires (details::is_unexpected_type_v<remove_cvref_t<U>> &&
-        constructible_from<E, unexpected_error_type<U>>)
+    requires details::is_unexpected_type_v<remove_cvref_t<U>> &&
+        constructible_from<E, unexpected_error_type<U>>
     __UTL_HIDE_FROM_ABI explicit(
         !is_convertible_v<unexpected_error_type<U>, E>) inline constexpr expected(U&&
-            e) noexcept(UTL_TRAIT_is_nothrow_constructible(E, unexpected_error_type<U>))
+            e) noexcept(is_nothrow_constructible_v<E, unexpected_error_type<U>>)
         : base_type(__UTL unexpect, __UTL forward_like<U>(e.error())) {}
 
     template <typename... Args>
     requires constructible_from<T, Args...>
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(in_place_t, Args&&... args) noexcept(
-        UTL_TRAIT_is_nothrow_constructible(T, Args...))
+        is_nothrow_constructible_v<T, Args...>)
         : base_type(__UTL in_place, __UTL forward<Args>(args)...) {}
 
     template <typename U, typename... Args>
     requires constructible_from<T, ::std::initializer_list<U>&, Args...>
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(in_place_t,
-        ::std::initializer_list<U> il,
-        Args&&... args) noexcept(UTL_TRAIT_is_nothrow_constructible(T, ::std::initializer_list<U>&,
-        Args...))
+        ::std::initializer_list<U> il, Args&&... args) noexcept(is_nothrow_constructible_v<T,
+        ::std::initializer_list<U>&, Args...>)
         : base_type(__UTL in_place, il, __UTL forward<Args>(args)...) {}
 
     template <typename... Args>
@@ -175,19 +175,16 @@ public:
     template <typename U, typename... Args>
     requires constructible_from<E, ::std::initializer_list<U>&, Args...>
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(unexpect_t,
-        ::std::initializer_list<U> il,
-        Args&&... args) noexcept(UTL_TRAIT_is_nothrow_constructible(E, ::std::initializer_list<U>&,
-        Args...))
+        ::std::initializer_list<U> il, Args&&... args) noexcept(is_nothrow_constructible_v<E,
+        ::std::initializer_list<U>&, Args...>)
         : base_type(__UTL unexpect, il, __UTL forward<Args>(args)...) {}
 
     __UTL_HIDE_FROM_ABI inline ~expected() noexcept = default;
 
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(expected const&) noexcept(
-        UTL_TRAIT_is_nothrow_copy_assignable(T) &&
-        UTL_TRAIT_is_nothrow_copy_assignable(E)) = default;
+        is_nothrow_copy_assignable_v<T> && is_nothrow_copy_assignable_v<E>) = default;
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(expected&&) noexcept(
-        UTL_TRAIT_is_nothrow_move_assignable(T) &&
-        UTL_TRAIT_is_nothrow_move_assignable(E)) = default;
+        is_nothrow_move_assignable_v<T> && is_nothrow_move_assignable_v<E>) = default;
 
     template <typename U = T>
     requires (!same_as<expected, remove_cvref_t<U>> &&
@@ -207,11 +204,11 @@ public:
     }
 
     template <typename U>
-    requires (details::is_unexpected_type_v<remove_cvref_t<U>> &&
+    requires details::is_unexpected_type<remove_cvref_t<U>>::value &&
         constructible_from<E, unexpected_error_type<U>> &&
         assignable_from<E&, unexpected_error_type<U>> &&
         (is_nothrow_constructible_v<E, unexpected_error_type<U>> ||
-            is_nothrow_move_constructible_v<T> || is_nothrow_move_constructible_v<E>))
+            is_nothrow_move_constructible_v<T> || is_nothrow_move_constructible_v<E>)
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(U&& u) noexcept(
         is_nothrow_assignable_v<E&, unexpected_error_type<U>> &&
         is_nothrow_constructible_v<E, unexpected_error_type<U>>) {
@@ -400,7 +397,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, this->error_ref()};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f), this->value_ref());
             return expected<return_type, E>{};
         } else {
@@ -424,7 +421,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, this->error_ref()};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f), this->value_ref());
             return expected<return_type, E>{};
         } else {
@@ -447,7 +444,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, __UTL move(this->error_ref())};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f), __UTL move(this->value_ref()));
             return expected<return_type, E>{};
         } else {
@@ -471,7 +468,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, __UTL move(this->error_ref())};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f), __UTL move(this->value_ref()));
             return expected<return_type, E>{};
         } else {
@@ -734,9 +731,9 @@ public:
 
     __UTL_HIDE_FROM_ABI inline constexpr expected() noexcept = default;
     __UTL_HIDE_FROM_ABI inline constexpr expected(expected const& other) noexcept(
-        UTL_TRAIT_is_nothrow_copy_constructible(base_type)) = default;
+        is_nothrow_copy_constructible_v<base_type>) = default;
     __UTL_HIDE_FROM_ABI inline constexpr expected(expected&& other) noexcept(
-        UTL_TRAIT_is_nothrow_move_constructible(base_type)) = default;
+        is_nothrow_move_constructible_v<base_type>) = default;
 
     template <typename T1, typename E1>
     requires can_convert<T1, E1, E1 const&>::value
@@ -752,11 +749,11 @@ public:
               __UTL move(other.data_ref())) {}
 
     template <typename U>
-    requires (details::is_unexpected_type_v<remove_cvref_t<U>> &&
-        constructible_from<E, unexpected_error_type<U>>)
+    requires details::is_unexpected_type_v<remove_cvref_t<U>> &&
+        constructible_from<E, unexpected_error_type<U>>
     __UTL_HIDE_FROM_ABI explicit(
         !is_convertible_v<unexpected_error_type<U>, E>) inline constexpr expected(U&&
-            e) noexcept(UTL_TRAIT_is_nothrow_constructible(E, unexpected_error_type<U>))
+            e) noexcept(is_nothrow_constructible_v<E, unexpected_error_type<U>>)
         : base_type(__UTL unexpect, __UTL forward_like<U>(e.error())) {}
 
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(in_place_t) noexcept
@@ -765,30 +762,29 @@ public:
     template <typename... Args>
     requires constructible_from<E, Args...>
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(unexpect_t, Args&&... args) noexcept(
-        UTL_TRAIT_is_nothrow_constructible(E, Args...))
+        is_nothrow_constructible_v<E, Args...>)
         : base_type(__UTL unexpect, __UTL forward<Args>(args)...) {}
 
     template <typename U, typename... Args>
     requires constructible_from<E, ::std::initializer_list<U>&, Args...>
     __UTL_HIDE_FROM_ABI explicit inline constexpr expected(unexpect_t,
-        ::std::initializer_list<U> il,
-        Args&&... args) noexcept(UTL_TRAIT_is_nothrow_constructible(E, ::std::initializer_list<U>&,
-        Args...))
+        ::std::initializer_list<U> il, Args&&... args) noexcept(is_nothrow_constructible_v<E,
+        ::std::initializer_list<U>&, Args...>)
         : base_type(__UTL unexpect, il, __UTL forward<Args>(args)...) {}
 
     __UTL_HIDE_FROM_ABI inline ~expected() noexcept = default;
 
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(expected const&) noexcept(
-        UTL_TRAIT_is_nothrow_copy_assignable(E)) = default;
+        is_nothrow_copy_assignable_v<E>) = default;
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(expected&&) noexcept(
-        UTL_TRAIT_is_nothrow_move_assignable(E)) = default;
+        is_nothrow_move_assignable_v<E>) = default;
 
     template <typename U>
-    requires (details::is_unexpected_type_v<remove_cvref_t<U>> &&
+    requires details::is_unexpected_type_v<remove_cvref_t<U>> &&
         constructible_from<E, unexpected_error_type<U>> &&
         assignable_from<E&, unexpected_error_type<U>> &&
         (is_nothrow_constructible_v<E, unexpected_error_type<U>> ||
-            is_nothrow_move_constructible_v<E>))
+            is_nothrow_move_constructible_v<E>)
     __UTL_HIDE_FROM_ABI inline constexpr expected& operator=(U&& u) noexcept(
         is_nothrow_assignable_v<E&, unexpected_error_type<U>> &&
         is_nothrow_constructible_v<E, unexpected_error_type<U>>) {
@@ -925,7 +921,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, this->error_ref()};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f));
             return expected<return_type, E>{};
         } else {
@@ -948,7 +944,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, this->error_ref()};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f));
             return expected<return_type, E>{};
         } else {
@@ -971,7 +967,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, __UTL move(this->error_ref())};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f));
             return expected<return_type, E>{};
         } else {
@@ -994,7 +990,7 @@ public:
             return expected<return_type, E>{__UTL unexpect, __UTL move(this->error_ref())};
         }
 
-        if constexpr (UTL_TRAIT_is_void(return_type)) {
+        if constexpr (is_void_v<return_type>) {
             __UTL invoke(__UTL forward<F>(f));
             return expected<return_type, E>{};
         } else {

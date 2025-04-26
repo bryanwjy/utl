@@ -57,14 +57,14 @@ namespace unexpect {
 template <typename U>
 concept tag_type = (same_as<U, ::std::unexpect_t> || same_as<U, unexpect_t>);
 
-#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::in_place::tag_type<__VA_ARGS__>
+#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::unexpect::tag_type<__VA_ARGS__>
 
 #elif UTL_CXX14
 template <typename U>
 UTL_INLINE_CXX17 constexpr bool tag_type =
     UTL_TRAIT_is_same(U, ::std::unexpect_t) || UTL_TRAIT_is_same(U, unexpect_t);
 
-#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::in_place::tag_type<__VA_ARGS__>
+#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::unexpect::tag_type<__VA_ARGS__>
 
 #else
 
@@ -72,7 +72,7 @@ template <typename U>
 using tag_type =
     bool_constant<UTL_TRAIT_is_same(U, ::std::unexpect_t) || UTL_TRAIT_is_same(U, unexpect_t)>;
 
-#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::in_place::tag_type<__VA_ARGS__>::value
+#  define __UTL_TRAIT_unexpect_tag(...) __UTL details::unexpect::tag_type<__VA_ARGS__>::value
 
 #endif
 } // namespace unexpect
@@ -97,24 +97,23 @@ public:
 
     __UTL_HIDE_FROM_ABI inline UTL_CONSTEXPR_CXX20 ~unexpected() noexcept = default;
 
-    template <typename E1 = E UTL_CONSTRAINT_CXX11(
-        !UTL_TRAIT_is_same(remove_cvref_t<E1>, unexpected) &&
+    template <typename E1 = E UTL_CONSTRAINT_CXX11(!__UTL_TRAIT_unexpect_tag(remove_cvref_t<E1>) &&
         !__UTL_TRAIT_in_place_tag(remove_cvref_t<E1>) && UTL_TRAIT_is_constructible(E, E1))>
-    UTL_CONSTRAINT_CXX20(!UTL_TRAIT_is_same(remove_cvref_t<E1>, unexpected) &&
-        !UTL_TRAIT_is_same(remove_cvref_t<E1>, in_place_t) && UTL_TRAIT_is_constructible(E, E1))
+    UTL_CONSTRAINT_CXX20(!__UTL_TRAIT_unexpect_tag(remove_cvref_t<E1>) &&
+        !__UTL_TRAIT_in_place_tag(remove_cvref_t<E1>) && is_constructible_v<E, E1>)
     __UTL_HIDE_FROM_ABI inline constexpr unexpected(E1&& arg) noexcept(
         UTL_TRAIT_is_nothrow_constructible(E, E1))
         : error_{__UTL forward<E1>(arg)} {}
 
     template <typename... Args UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_constructible(E, Args...))>
-    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_constructible(E, Args...))
+    UTL_CONSTRAINT_CXX20(is_constructible_v<E, Args...>)
     __UTL_HIDE_FROM_ABI inline constexpr unexpected(in_place_t, Args&&... args) noexcept(
         UTL_TRAIT_is_nothrow_constructible(E, Args...))
         : error_{__UTL forward<Args>(args)...} {}
 
     template <typename U, typename... Args UTL_CONSTRAINT_CXX11(
         UTL_TRAIT_is_constructible(E, ::std::initializer_list<U>&, Args...))>
-    UTL_CONSTRAINT_CXX20(UTL_TRAIT_is_constructible(E, ::std::initializer_list<U>&, Args...))
+    UTL_CONSTRAINT_CXX20(is_constructible_v<E, ::std::initializer_list<U>&, Args...>)
     __UTL_HIDE_FROM_ABI inline constexpr unexpected(in_place_t, ::std::initializer_list<U> il,
         Args&&... args) noexcept(UTL_TRAIT_is_nothrow_constructible(E, ::std::initializer_list<U>&,
         Args...))

@@ -10,7 +10,7 @@
 UTL_NAMESPACE_BEGIN
 
 template <typename F, typename... Args>
-concept invocable = UTL_TRAIT_is_invocable(F, Args...);
+concept invocable = is_invocable_v<F, Args...>;
 
 template <typename F, typename... Args>
 concept regular_invocable = invocable<F, Args...>;

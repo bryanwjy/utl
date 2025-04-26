@@ -17,7 +17,7 @@ template <typename T>
 concept has_size = requires { tuple_size<T>::value; };
 template <typename T, size_t I>
 concept has_element = has_size<T> && requires(T t) {
-    requires I < tuple_size<T>::value;
+    requires (I < tuple_size<T>::value);
     typename tuple_element<I, T>::type;
     __UTL get_element<I>(__UTL forward<T>(t));
 };
