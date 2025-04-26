@@ -159,6 +159,21 @@ class func_t<walk_attributes::top_down_t> {
         return true;
     }
 
+    template <UTL_CONCEPT_CXX20(__UTL invocable<walk_error>) F UTL_CONSTRAINT_CXX11(
+        UTL_TRAIT_is_invocable(F, walk_error))>
+    static walk_result on_error(F const& func, walk_error error) noexcept(
+        UTL_TRAIT_is_nothrow_invocable(F, walk_error)) {
+        static_assert(UTL_TRAIT_is_invocable_r(walk_result, F, walk_error),
+            "Error invocation result must be convertible to walk_result");
+        return __UTL invoke(func, std::move(error));
+    }
+
+    template <typename F UTL_CONSTRAINT_CXX11(!UTL_TRAIT_is_invocable(F, walk_error))>
+    static walk_result on_error(F const&, walk_error error) noexcept(
+        UTL_TRAIT_is_nothrow_invocable(F, walk_error)) {
+        return walk_result{__UTL unexpect, std::move(error)};
+    }
+
 public:
     constexpr explicit func_t() noexcept = default;
     func_t(func_t const&) = delete;
@@ -166,8 +181,8 @@ public:
     func_t(func_t&&) noexcept = delete;
     func_t& operator=(func_t&&) noexcept = delete;
 
-    template <typename Opt, typename F, typename E>
-    walk_result operator()(views::directory dir, F&& func, E&& on_error) const {
+    template <typename Opt, typename F>
+    walk_result operator()(views::directory dir, F const& func) const {
         UTL_ON_SCOPE_EXIT {
             stack().clear();
         };
@@ -175,8 +190,9 @@ public:
         temp_path_type current_dir{dir.path()};
         reader_type reader{current_dir};
         if (!reader.valid()) {
-            return on_error(walk_error{
-                current_dir, error_code{errno, __UTL system_category()}
+            return on_error(func,
+                walk_error{
+                    current_dir, error_code{errno, __UTL system_category()}
             });
         }
 
@@ -200,10 +216,10 @@ public:
         }
 
         if (pop_stack(current_dir)) {
-            auto status = reader.reset(current_dir);
-            if (!status) {
-                status = on_error(walk_error{current_dir, status.error()});
-            }
+            auto const status = reader.reset(current_dir).or_else([&](walk_error error) {
+                return on_error(func, walk_error{current_dir, error});
+            });
+
             if (!status) {
                 return status;
             }
@@ -222,17 +238,33 @@ class func_t<walk_attributes::bottom_up_t> {
     using temp_path_type = basic_short_string<path_char, 512>;
     static constexpr unsigned int maximum_depth = UTL_FILESYSTEM_MAX_WALK_BOTTOM_UP_DEPTH;
 
-    template <typename F, typename E>
-    static walk_result impl(
-        temp_path_type& current_dir, F const& func, E const& on_error, unsigned int depth = 0) {
+    template <UTL_CONCEPT_CXX20(__UTL invocable<walk_error>) F UTL_CONSTRAINT_CXX11(
+        UTL_TRAIT_is_invocable(F, walk_error))>
+    static walk_result on_error(F const& func, walk_error error) noexcept(
+        UTL_TRAIT_is_nothrow_invocable(F, walk_error)) {
+        static_assert(UTL_TRAIT_is_invocable_r(walk_result, F, walk_error),
+            "Error invocation result must be convertible to walk_result");
+        return __UTL invoke(func, std::move(error));
+    }
+
+    template <typename F UTL_CONSTRAINT_CXX11(!UTL_TRAIT_is_invocable(F, walk_error))>
+    static walk_result on_error(F const&, walk_error error) noexcept(
+        UTL_TRAIT_is_nothrow_invocable(F, walk_error)) {
+        return walk_result{__UTL unexpect, std::move(error)};
+    }
+
+    template <typename F>
+    static walk_result impl(temp_path_type& current_dir, F const& func, unsigned int depth = 0) {
+
         if (depth >= maximum_depth) {
             return walk_result{__UTL unexpect, error_value::walk_limit_exceeded};
         }
 
         reader_type reader{current_dir};
         if (!reader.valid()) {
-            auto result = on_error(walk_error{
-                current_dir, error_code{errno, __UTL system_category()}
+            auto result = on_error(func,
+                walk_error{
+                    current_dir, error_code{errno, __UTL system_category()}
             });
 
             if (depth == 0 || !result) {
@@ -276,10 +308,10 @@ public:
     func_t& operator=(func_t&&) noexcept = delete;
 
     template <typename Opt, typename F, typename E>
-    walk_result operator()(views::directory dir, F&& func, E&& on_error) const {
+    walk_result operator()(views::directory dir, F&& func) const {
         using reader_type = dir_reader<Opt>;
         temp_path_type current_dir{dir.path()};
-        impl(current_dir, func, on_error);
+        impl(current_dir, func);
     }
 };
 
@@ -302,8 +334,7 @@ __UTL_HIDE_FROM_ABI walk_result walk(views::directory dir, F&& func, Opt&& optio
     using direction_type = details::walk::direction<attributes_type>;
     using strategy_type = details::walk::symlink_strategy<attributes_type>;
     static constexpr details::walk::func_t<direction_type> impl{};
-    impl<strategy_type>(
-        dir, __UTL forward<F>(func), get_error_handler(__UTL forward<Opt>(options)));
+    impl<strategy_type>(dir, __UTL forward<F>(func));
 }
 
 __UFS_NAMESPACE_END

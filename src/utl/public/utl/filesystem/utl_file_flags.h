@@ -37,7 +37,7 @@ __UTL_HIDE_FROM_ABI inline constexpr UTL_ENABLE_IF_CXX11(
     Flag const&, UTL_TRAIT_is_base_of(details::open::flag_t, Flag) &&
     UTL_TRAIT_is_base_of(Flag, file_flags_t<Os...>))
 get(file_flags_t<Os...> const& flags) noexcept {
-    return (FlagType const&)flags;
+    return (Flag const&)flags;
 }
 
 template <typename... Os>
@@ -112,9 +112,16 @@ protected:
     }
 };
 
-struct access_t : flag_t {};
-struct write_sync_t : flag_t {};
-struct creation_t : flag_t {};
+struct access_t : flag_t {
+protected:
+    __UTL_HIDE_FROM_ABI ~access_t() noexcept = default;
+};
+struct write_sync_t : flag_t {
+    __UTL_HIDE_FROM_ABI ~write_sync_t() noexcept = default;
+};
+struct creation_t : flag_t {
+    __UTL_HIDE_FROM_ABI ~creation_t() noexcept = default;
+};
 
 struct create_t : flag_base_t<create_t, creation_t> {
     __UTL_HIDE_FROM_ABI explicit inline constexpr create_t(perms p) noexcept : mode_{p} {}

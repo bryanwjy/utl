@@ -203,20 +203,18 @@ open_at(read_file_handle const& dir, P const& path, Flags flags) noexcept(
 }
 
 template <UTL_CONCEPT_CXX20(details::path::typed_container) P,
-    UTL_CONCEPT_CXX20(details::open::valid_flags) Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD)
-UTL_ENABLE_IF_CXX11(open_result_t<Flags>, details::open::is_valid_flags<Flags>::value)
-open_at(read_file_handle const& dir, P const& path, Flags flags) noexcept(
-    noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
+    UTL_CONCEPT_CXX20(details::open::valid_flags) Flags UTL_CONSTRAINT_CXX11(details::open::is_valid_flags<Flags>::value)>
+UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) open_result_t<Flags> open_at(read_file_handle const& dir,
+    P const& path,
+    Flags flags) noexcept(noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
     return open_at<__UFS_FILE_TYPE_OF(P)>(dir, path, flags);
 }
 
 template <UTL_CONCEPT_CXX20(details::path::container) P,
-    UTL_CONCEPT_CXX20(details::open::valid_flags) Flags>
-UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD)
-UTL_ENABLE_IF_CXX11(open_result_t<Flags>, details::open::is_valid_flags<Flags>::value)
-open_at(read_file_handle const& dir, P const& path, Flags flags) noexcept(
-    noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
+    UTL_CONCEPT_CXX20(details::open::valid_flags) Flags UTL_CONSTRAINT_CXX11(details::open::is_valid_flags<Flags>::value)>
+UTL_ATTRIBUTES(_HIDE_FROM_ABI, NODISCARD) open_result_t<Flags> open_at(read_file_handle const& dir,
+    P const& path,
+    Flags flags) noexcept(noexcept(static_cast<zpath_view>(details::path::terminated_path(path)))) {
     using native_handle = details::file_descriptor_t;
     static_assert(details::open::ensure_valid_flags<Type, Flags>(), "Invalid input");
 

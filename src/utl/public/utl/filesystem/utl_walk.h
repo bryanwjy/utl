@@ -110,11 +110,8 @@ namespace walk_attribute {
 enum class category {
     direction,
     follow_symlinks,
-    error_handler,
 };
 
-template <typename E>
-class error_handler_t;
 struct bottom_up_t;
 struct top_down_t;
 
@@ -123,14 +120,17 @@ struct default_tag;
 
 template <typename T>
 struct category_map {
-    friend constexpr category get_category_impl(category_map) noexcept;
+    __UTL_HIDE_FROM_ABI friend UTL_CONSTEVAL category get_category_impl(category_map) noexcept;
 };
 
 template <typename T, category I>
 struct basic_option {
-    friend constexpr category get_category_impl(category_map<T>) noexcept { return I; }
+    __UTL_HIDE_FROM_ABI friend UTL_CONSTEVAL category get_category_impl(category_map<T>) noexcept {
+        return I;
+    }
+
     template <typename U>
-    static constexpr category get_category() noexcept {
+    __UTL_HIDE_FROM_ABI static UTL_CONSTEVAL category get_category() noexcept {
         return get_category_impl(category_map<U>{});
     }
 
@@ -160,54 +160,7 @@ struct basic_option {
     }
 };
 
-struct error_handler_factory_t;
-
-template <typename>
-struct is_error_handler : false_type {};
-template <typename E>
-struct is_error_handler<error_handler_t<E>> : true_type {};
-
-struct error_handler_factory_t {
-    template <typename E UTL_CONSTRAINT_CXX11(
-        UTL_TRAIT_is_invocable_r(walk_result, decay_t<E>, walk_error) &&
-        !is_error_handler<decay_t<E>>::value)>
-    __UTL_HIDE_FROM_ABI inline constexpr error_handler_t<decay_t<E>> operator->*(
-        E&& handler) const noexcept {
-        return error_handler_t<decay_t<E>>{__UTL forward<E>(handler)};
-    }
-};
 } // namespace details
-
-template <typename E>
-class error_handler_t : public details::basic_option<error_handler_t<E>, category::error_handler> {
-public:
-    __UTL_HIDE_FROM_ABI inline constexpr walk_result operator()(walk_error&& error) const
-        noexcept(UTL_TRAIT_is_nothrow_invocable(E, walk_error)) {
-        return func_(__UTL move(error));
-    }
-
-private:
-    friend struct details::error_handler_factory_t;
-    template <typename Arg>
-    __UTL_HIDE_FROM_ABI explicit inline constexpr error_handler_t(Arg&& arg) noexcept(
-        UTL_TRAIT_is_nothrow_constructible(E, Arg))
-        : func_(__UTL forward<Arg>(arg)) {}
-
-    mutable E func_;
-};
-
-template <>
-class error_handler_t<details::default_tag> :
-    public details::basic_option<error_handler_t<details::default_tag>, category::error_handler> {
-    __UTL_HIDE_FROM_ABI inline constexpr walk_result operator(walk_error&& err) const noexcept {
-        return static_cast<walk_result>(err);
-    }
-
-    __UTL_HIDE_FROM_ABI inline constexpr
-    operator walk_attributes<error_handler_t<details::default_tag>, top_down_t>() const noexcept {
-        return walk_attributes<error_handler_t<details::default_tag>, top_down_t>{};
-    }
-};
 
 struct top_down_t : details::basic_option<top_down_t, category::direction> {
     __UTL_HIDE_FROM_ABI explicit inline constexpr top_down_t() noexcept = default;
@@ -224,7 +177,6 @@ struct follow_symlinks_t : details::basic_option<follow_symlinks_t, category::fo
 __UTL_HIDE_FROM_ABI inline constexpr top_down_t top_down{};
 __UTL_HIDE_FROM_ABI inline constexpr bottom_up_t bottom_up{};
 __UTL_HIDE_FROM_ABI inline constexpr follow_symlinks_t follow_symlinks{};
-__UTL_HIDE_FROM_ABI inline constexpr details::error_handler_factory_t error_handler{};
 
 } // namespace walk_attribute
 
@@ -254,7 +206,7 @@ __UTL_HIDE_FROM_ABI inline walk_result walk(views::directory dir, F&& func, Opt&
 }
 
 template <UTL_CONCEPT_CXX20(walk_invocable) F, typename E UTL_CONSTRAINT_CXX11(
-    always_true<decltype(walk_attribute::error_handler->*declval<E>())>())>
+    always_true<decltype(walk_attribute::error_handler->*__UTL declval<E>())>())>
 __UTL_HIDE_FROM_ABI inline walk_result walk(views::directory dir, F&& func, E&& handler) {
     return details::walk_impl(dir.path(), __UTL forward<F>(func),
         walk_attribute::error_handler->*__UTL forward<E>(handler));
@@ -267,12 +219,17 @@ __UTL_HIDE_FROM_ABI inline walk_result walk(views::directory dir, F&& func) {
 
 #ifdef UTL_CXX17
 namespace details {
-template <typename F>
-class function_type;
+
+template <typename F UTL_TEMPLATE_CXX11(typename = void)>
+class function_type {
+    static_assert(UTL_TRAIT_is_walk_invocable(F), "Invalid type");
+};
+
 template <typename R, typename... Args>
-class function_type<R (*)(Args...)> {
+UTL_CONSTRAINT_CXX20(walk_invocable<R(Args)>)
+class function_type<R (*)(Args...)
+        UTL_TEMPLATE_CXX11(enable_if_t<UTL_TRAIT_is_walk_invocable(R(Args...))>)> {
     using value_type = R (*)(Args...);
-    static_assert(UTL_TRAIT_is_boolean(R) || UTL_TRAIT_is_void(R), "Invalid return type");
 
 public:
     __UTL_HIDE_FROM_ABI inline explicit function_type(value_type func) noexcept : func_{func} {}
@@ -289,7 +246,7 @@ private:
 
 template <typename F>
 using visitor_base =
-    conditional_t<UTL_TRAIT_is_class(F), F, details::function_type<__UTL decay_t<F>>>;
+    conditional_t<UTL_TRAIT_is_class(F)&&, F, details::function_type<__UTL decay_t<F>>>;
 
 struct file_visit_t {
     __UTL_HIDE_FROM_ABI explicit inline constexpr file_visit_t() noexcept = default;
@@ -297,6 +254,7 @@ struct file_visit_t {
 __UTL_HIDE_FROM_ABI UTL_INLINE_CXX17 file_visit_t file_visit{};
 
 } // namespace details
+
 template <UTL_CONCEPT_CXX20(walk_invocable)... Fs>
 class __UTL_PUBLIC_TEMPLATE file_visitor : private details::visitor_base<Fs>... {
     using Fs::operator()...;
@@ -309,14 +267,16 @@ public:
     file_visitor(Gs&&... funcs) noexcept(UTL_TRAIT_conjunction(is_nothrow_constructible<Fs, Gs>...))
         : visitor_base<Fs>{__UTL forward<Gs>(funcs)}... {}
 
-    template <typename Arg UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_boolean_testable(result_type<Arg>))>
-    bool operator()(details::file_visit_t, Arg&& arg) const {
-        return static_cast<bool>(operator()(__UTL forward<Arg>(arg)));
+    template <typename Arg>
+    walk_result operator()(details::file_visit_t, Arg&& arg) const
+        noexcept(noexcept(static_cast<walk_result>(operator()(__UTL declval<Arg>())))) {
+        return static_cast<walk_result>(operator()(__UTL forward<Arg>(arg)));
     }
 
     template <typename Arg UTL_CONSTRAINT_CXX11(UTL_TRAIT_is_void(result_type<Arg>))>
-    bool operator()(details::file_visit_t, Arg&& arg) const {
-        return operator()(__UTL forward<Arg>(arg)), true;
+    walk_result operator()(details::file_visit_t, Arg&& arg) const
+        noexcept(noexcept(operator()(__UTL declval<Arg>()))) {
+        return operator()(__UTL forward<Arg>(arg)), walk_result{};
     }
 };
 #else  // UTL_CXX17

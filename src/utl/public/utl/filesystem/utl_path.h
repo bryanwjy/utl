@@ -753,7 +753,7 @@ concept typed_container = container<T> &&
     (terminator::typed_view_container<T> || terminator::typed_terminated_container<T>);
 
 template <typename T, file_type Type>
-concept container_of = typed_container<T> && __UFS_FILE_TYPE_OF(T) == Type;
+concept container_of = typed_container<T> && (__UFS_FILE_TYPE_OF(T) == Type);
 
 } // namespace path
 } // namespace details
