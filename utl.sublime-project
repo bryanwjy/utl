@@ -3,7 +3,15 @@
 	[
 		{
 			"path": "src/utl",
-			"name": "UTL"
+			"name": "utl"
+		},
+		{
+			"path": "src/utlrt",
+			"name": "utlrt"
+		},
+		{
+			"path": "src/rpmalloc",
+			"name": "rpmalloc"
 		},
 		{
 			"path": ".",

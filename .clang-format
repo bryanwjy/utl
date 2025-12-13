@@ -43,7 +43,7 @@ BreakStringLiterals: true
 # BreakTemplateDeclarations: MultiLine
 AlwaysBreakTemplateDeclarations: true
 IndentRequiresClause: false
-ColumnLimit: 100
+ColumnLimit: 80
 CompactNamespaces: false
 PackConstructorInitializers: CurrentLine
 Cpp11BracedListStyle: true
@@ -80,7 +80,7 @@ IncludeBlocks:   Regroup
 IncludeCategories:
   - Regex:           '.*\.generated\.h'
     Priority:        100
-  - Regex:           '"utl/utl_config.h"'
+  - Regex:           '"utl/config.h"'
     Priority:        0
   - Regex:           '"utl/configuration/.*"'
     Priority:        0
@@ -97,7 +97,16 @@ IncludeCategories:
 
 IfMacros: ['UTL_TRY','UTL_IF_CONSTEVAL','UTL_IF_CONSTEXPR']
 AttributeMacros: []
-StatementMacros: ['UTL_NAMESPACE_BEGIN', 'UTL_NAMESPACE_END']
+StatementMacros:
+- UTL_DEFAULT_NAMESPACE_BEGIN
+- UTL_DEFAULT_NAMESPACE_END
+- UTL_EXPORT_BEGIN
+- UTL_EXPORT_END
+- UTL_PUBLIC_DEFAULT_NAMESPACE_BEGIN
+- UTL_PUBLIC_DEFAULT_NAMESPACE_END
+- UTL_EXTERN_C_BEGIN
+- UTL_EXTERN_C_END
+
 Macros:
 - UTL_CATCH(X)=else if ([](X){ return true; }())
 - UTL_NOEXCEPT(X)=noexcept(X)
